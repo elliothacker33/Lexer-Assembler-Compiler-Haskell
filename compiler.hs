@@ -19,8 +19,8 @@ data Storeddata= TT | FF | N Integer
 type Stored = (String,Storeddata)
 type State = [Stored]
 
-createEmptyStored:: [(String,Storeddata)]
-createEmptyStored = []
+createEmptyState:: [(String,Storeddata)]
+createEmptyState = []
 compile :: Expr -> Code
 compile (Num n) = [Push n]
 compile (OpAdd e1 e2)
@@ -40,71 +40,71 @@ addStored ((x,stored):l) (new_s,new_stored)
     | x == new_s = (new_s,new_stored):l
     | otherwise = (x,stored):addStored l (new_s,new_stored)
 
-exec :: (Stack Storeddata, Code,State) -> (Stack Storeddata, Code,State)
-exec (stack, [],stored) = (stack, [],stored)
-exec (stack, Push v:code,stored)=exec (push (N v) stack, code,stored)
-exec (stack, Tru:code,stored)= (push TT stack, code,stored)
-exec (stack, Fals:code,stored)= (push FF stack, code,stored)
+exec :: ( Code,Stack Storeddata,State) -> ( Code,Stack Storeddata,State)
+exec ([],stack, stored) = ([],stack, stored)
+exec ( Push v:code,stack,stored)=exec ( code,push (N v) stack,stored)
+exec ( Tru:code,stack,stored)= ( code,push TT stack,stored)
+exec ( Fals:code,stack,stored)= ( code,push FF stack,stored)
 
-exec (stack, Neg:code,stored)
-    | top stack == TT = (push FF (pop stack), code,stored)
-    | top stack == FF = (push TT (pop stack), code,stored)
+exec (Neg:code,stack, stored)
+    | top stack == TT = ( code,push FF (pop stack),stored)
+    | top stack == FF = ( code,push TT (pop stack),stored)
     | otherwise = error ("not bollean on NEG instead" ++ show (top stack))
-exec (stack, And:code,stored)
+exec (And:code,stack,stored)
     | isEmpty stack || isEmpty stack1 = error "Not Enought elements in stack"
     | (top stack /= FF && top stack /= TT ) || (top stack1 /= FF && top stack1 /= TT ) = error ("And operantor only works between booleans not with " ++ show (top stack) ++ " and " ++ show (top stack1))
-    | otherwise = (push ( andop (top stack) (top stack1)) stack2,code,stored)
+    | otherwise = (code,push ( andop (top stack) (top stack1)) stack2,stored)
     where
         stack1 = pop stack
         stack2 = pop stack1
         andop TT TT = TT
         andop _ _ = FF
 
-exec (stack, State s:code,stored)= (pop stack, code,addStored stored (s,top stack))
+exec (State s:code,stack, stored)= (code,pop stack, addStored stored (s,top stack))
 
-exec (stack, Branch c1 c2:code,stored)
-    | top stack == TT = exec (pop stack, c1 ++ code,stored)
-    | top stack == FF = exec (pop stack, c2 ++ code,stored)
+exec (Branch c1 c2:code,stack, stored)
+    | top stack == TT = exec (c1 ++ code,pop stack, stored)
+    | top stack == FF = exec ( c2 ++ code,pop stack,stored)
     | otherwise = error ("not bollean on Branch " ++ show (top stack))
-exec (stack, Noop:code,stored)=
-    exec (stack, code,stored)
+exec (Noop:code,stack, stored)=
+    exec (code,stack,stored)
 
-exec (stack, Loop c1 c2:code,stored)=
+exec (Loop c1 c2:code,stack,stored)=
     let loopcode = c2++[Loop c1 c2] in
         let code1 = (Branch  loopcode [Noop]):code  in
             let code2 = c1 ++ code1 in
-                (stack, code2 ,stored)
+                (code2 ,stack, stored)
 
-exec (stack, Equ:code,stored)=
+exec ( Equ:code,stack,stored)=
     let v1 = top stack in
         let v2 = top (pop stack ) in
-            if v1 == v2 then (push TT (pop (pop stack)), code,stored)
-            else (push FF (pop (pop stack)), code,stored)
+            if v1 == v2 then ( code,push TT (pop (pop stack)),stored)
+            else (code,push FF (pop (pop stack)),stored)
 
-exec (stack, Le:code,stored)=
+exec (Le:code,stack, stored)=
     let N v1 = top stack in
         let N v2 = top (pop stack ) in
-            if v1 <= v2 then (push TT (pop (pop stack)), code,stored)
-            else (push FF (pop (pop stack)), code,stored)
+            if v1 <= v2 then ( code,push TT (pop (pop stack)),stored)
+            else ( code,push FF (pop (pop stack)),stored)
 
 
-exec (stack, Fetch s:code,stored)=
+exec (Fetch s:code,stack, stored)=
         let storedvalue = findStored stored s in
-            (push storedvalue stack, code,stored)
-exec (stack, Add:code,stored)=
+            ( code,push storedvalue stack,stored)
+exec (Add:code,stack, stored)=
     let N v1 = top stack in
         let N v2 = top (pop stack ) in
-            (push (N (v1+v2)) (pop (pop stack)), code,stored)
+            ( code,push (N (v1+v2)) (pop (pop stack)),stored)
 
-exec (stack, Mult:code,stored)=
+exec (Mult:code,stack, stored)=
     let N v1 = top stack in
         let N v2 = top (pop stack ) in
-            (push (N (v1*v2)) (pop (pop stack)), code,stored)
+            ( code,push (N (v1*v2)) (pop (pop stack)),stored)
 
-exec (stack, Sub:code,stored)=
+exec (Sub:code,stack, stored)=
     let N v1 = top stack in
         let N v2 = top (pop stack ) in
-            (push (N (v1-v2)) (pop (pop stack)), code,stored)
+            ( code,push (N (v1-v2)) (pop (pop stack)),stored)
 
 --state2Str :: State -> String
 --state2Str (_,_,store) = listToString store
@@ -136,25 +136,16 @@ state2Strtmp [] = ""
 state2Strtmp [(s,x)] = s ++ "=" ++ storeddataToString x
 state2Strtmp ((s,x):l) = s ++ "=" ++ storeddataToString x ++ "," ++ state2Str l
 
-runState :: (Stack Storeddata, Code,State) -> (Stack Storeddata,Code,State)
-runState (stack, [],stored) = (stack,[],stored)
-runState s = runState (exec s)
+run :: ( Code,Stack Storeddata,State) -> (Code,Stack Storeddata,State)
+run ([],stack,stored) = ([],stack,stored)
+run s = run (exec s)
 
-tmpio :: Code -> IO()
-tmpio e = do
-    let (stack,status)=run (e)
-    print stack
-    print status
 
-run :: Code -> (String,String)
-run c =
-    let (stack,_,stored) = runState (createEmptyStack,c,[]) in
-        (stack2Str stack, state2Str stored)
 
 
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
-    where (stack,_,state) = runState (createEmptyStack,code,createEmptyStored)
+    where (_,stack,state) = run (code,createEmptyStack,createEmptyState)
 
 -- tests
 --testAssembler [Push 10,Push 4,Push 3,Sub,Mult] == ("-10","")
