@@ -17,7 +17,7 @@ data Storeddata= TT | FF | N Integer
 -- o código é uma lista de instruções
 
 type Stored = (String,Storeddata)
-type State = (Stack Storeddata, Code,[Stored])
+type State = [Stored]
 
 createEmptyStored:: [(String,Storeddata)]
 createEmptyStored = []
@@ -28,19 +28,19 @@ compile (OpAdd e1 e2)
 compile (OpMult e1 e2)
     = compile e1 ++ compile e2 ++ [Mult]
 
-findStored:: [Stored]->String->Storeddata
-findStored [] _ = error "Value not found"
+findStored:: State->String->Storeddata
+findStored [] s = error ("Value with key " ++ s ++" Not found")
 findStored ((x,stored):l) s
     | x == s = stored
     | otherwise = findStored l s
 
-addStored:: [Stored]->(String,Storeddata)->[Stored]
+addStored:: State->(String,Storeddata)->State
 addStored [] new = [new]
 addStored ((x,stored):l) (new_s,new_stored)
     | x == new_s = (new_s,new_stored):l
     | otherwise = (x,stored):addStored l (new_s,new_stored)
 
-exec :: State -> State
+exec :: (Stack Storeddata, Code,State) -> (Stack Storeddata, Code,State)
 exec (stack, [],stored) = (stack, [],stored)
 exec (stack, Push v:code,stored)=exec (push (N v) stack, code,stored)
 exec (stack, Tru:code,stored)= (push TT stack, code,stored)
@@ -49,14 +49,23 @@ exec (stack, Fals:code,stored)= (push FF stack, code,stored)
 exec (stack, Neg:code,stored)
     | top stack == TT = (push FF (pop stack), code,stored)
     | top stack == FF = (push TT (pop stack), code,stored)
-    | otherwise = error "not bollean on NEG"
+    | otherwise = error ("not bollean on NEG instead" ++ show (top stack))
+exec (stack, And:code,stored)
+    | isEmpty stack || isEmpty stack1 = error "Not Enought elements in stack"
+    | (top stack /= FF && top stack /= TT ) || (top stack1 /= FF && top stack1 /= TT ) = error ("And operantor only works between booleans not with " ++ show (top stack) ++ " and " ++ show (top stack1))
+    | otherwise = (push ( andop (top stack) (top stack1)) stack2,code,stored)
+    where
+        stack1 = pop stack
+        stack2 = pop stack1
+        andop TT TT = TT
+        andop _ _ = FF
 
 exec (stack, State s:code,stored)= (pop stack, code,addStored stored (s,top stack))
 
 exec (stack, Branch c1 c2:code,stored)
     | top stack == TT = exec (pop stack, c1 ++ code,stored)
     | top stack == FF = exec (pop stack, c2 ++ code,stored)
-    | otherwise = error "not bollean on Branch"
+    | otherwise = error ("not bollean on Branch " ++ show (top stack))
 exec (stack, Noop:code,stored)=
     exec (stack, code,stored)
 
@@ -109,12 +118,25 @@ stack2Str stack
     | isEmpty stack = ""
     | isEmpty (pop stack) = storeddataToString (top stack)
     | otherwise = storeddataToString (top stack) ++ "," ++ stack2Str (pop stack)
-state2Str :: [Stored] -> String
-state2Str [] = ""
-state2Str [(s,x)] = s ++ "=" ++ storeddataToString x
-state2Str ((s,x):l) = s ++ "=" ++ storeddataToString x ++ "," ++ state2Str l
 
-runState :: State -> (Stack Storeddata,Code,[Stored])
+insert1 :: (String, Storeddata) -> [(String, Storeddata)] -> [(String, Storeddata)]
+insert1 c [] = [c]
+insert1 (s1,d1) ((s,d):xs) 
+    | s >= s1 = ((s1,d1):(s,d):xs)  
+    | s < s1 = [(s,d)] ++ (insert1 (s1,d1) xs)
+
+mysort :: State -> State
+mysort l = foldr insert1 [] l
+
+state2Str :: State -> String
+state2Str s = state2Strtmp (mysort s)
+
+state2Strtmp :: State -> String
+state2Strtmp [] = ""
+state2Strtmp [(s,x)] = s ++ "=" ++ storeddataToString x
+state2Strtmp ((s,x):l) = s ++ "=" ++ storeddataToString x ++ "," ++ state2Str l
+
+runState :: (Stack Storeddata, Code,State) -> (Stack Storeddata,Code,State)
 runState (stack, [],stored) = (stack,[],stored)
 runState s = runState (exec s)
 
