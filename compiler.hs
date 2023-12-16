@@ -155,3 +155,14 @@ run c =
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
     where (stack,_,state) = runState (createEmptyStack,code,createEmptyStored)
+
+-- tests
+--testAssembler [Push 10,Push 4,Push 3,Sub,Mult] == ("-10","")
+--testAssembler [Fals,Push 3,Tru,State "var",State "a", State "someVar"] == ("","a=3,someVar=False,var=True")
+--testAssembler [Fals,State "var",Fetch "var"] == ("False","var=False")
+--testAssembler [Push (-20),Tru,Fals] == ("False,True,-20","")
+--testAssembler [Push (-20),Tru,Tru,Neg] == ("False,True,-20","")
+--testAssembler [Push (-20),Tru,Tru,Neg,Equ] == ("False,-20","")
+--testAssembler [Push (-20),Push (-21), Le] == ("True","")
+--testAssembler [Push 5,State "x",Push 1,Fetch "x",Sub,State "x"] == ("","x=4")
+--testAssembler [Push 10,State "i",Push 1,State "fact",Loop [Push 1,Fetch "i",Equ,Neg] [Fetch "i",Fetch "fact",Mult,State "fact",Push 1,Fetch "i",Sub,State "i"]] == ("","fact=3628800,i=1")
