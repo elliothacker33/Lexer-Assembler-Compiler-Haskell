@@ -1,3 +1,4 @@
+module Compiler where
 import Stack
 -- instruções da máquina virtual
 data Expr = OpAdd Expr Expr
