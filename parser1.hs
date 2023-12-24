@@ -1,4 +1,5 @@
 import Compiler
+import Lexer
 {-
 data Token = Token {
   tokenType :: TokenType,

@@ -1,5 +1,5 @@
 --  This file implements a lexer for haskell
-
+module Lexer where
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 
 -- All tokens that our lexer recognize as valid Tokens
