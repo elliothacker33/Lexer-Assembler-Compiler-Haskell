@@ -1,9 +1,11 @@
 --  This file implements a lexer for haskell
 
+import Data.Char (isAlpha, isDigit, isSpace)
+
 -- All tokens that our lexer recognize as valid Tokens
 data TokenType =
   -- Special Tokens
-  | TOK_SPECIAL
+  TOK_SPECIAL
 
   -- Literals
   | TOK_INT
@@ -25,13 +27,13 @@ data Position = Position {
 
 data TokenValue =
   -- Special Token Values
-  | TokenOpenParenthesis
+  TokenOpenParenthesis
   | TokenClosedParenthesis
   | TokenEndOfStatement
 
   -- Literal Values
-  | TokenInt Integer
-  | TokenBool Boolean 
+  | TokenInt Int
+  | TokenBool Bool
 
   -- Identifier and Keyword Values
   | TokenIdent String
@@ -47,8 +49,9 @@ data TokenValue =
   | TokenMult
 
   -- Comparison Operators
-  | TokenEq
-  | TokenNe
+  | TokenIntEq
+  | TokenBoolEq
+  | TokenLe
 
   -- Logical Operators
   | TokenNot
@@ -78,103 +81,117 @@ validBool = ["True","False"]
 validSpecialChars :: [String]
 validSpecialChars = ["(",")",";"]
 
-stringToInt :: String -> Integer
-stringToInt str = foldl (\acc c -> acc * 10 + charToInt c) 0 str
+my_elem :: String -> [String] -> Bool
+my_elem el [] = False
+my_elem el (x:xs)
+  | (x == el) = True
+  | otherwise = my_elem el xs
 
-charToInt :: Char -> Integer
-charToInt c 
- | '0' = 0
- | '1' = 1
- | '2' = 2
- | '3' = 3
- | '4' = 4
- | '5' = 5
- | '6' = 6
- | '7' = 7
- | '8' = 8
- | '9' = 9
- | otherwise = error $"Unexpected digit"
+my_span :: (Char -> Bool) -> String -> (String, String)
+my_span _ [] = ([], [])
+my_span f (x:xs)
+  | f x = let (matched, rest) = my_span f xs in (x : matched, rest)
+  | otherwise = ([], x:xs)
+
+stringToInt :: String -> Int
+stringToInt str = case str of
+  ('-' : rest) -> -1 * foldl (\acc c -> acc * 10 + charToInt c) 0 rest
+  _ -> foldl (\acc c -> acc * 10 + charToInt c) 0 str
+
+charToInt :: Char -> Int
+charToInt c
+  | c == '0' = 0
+  | c == '1' = 1
+  | c == '2' = 2
+  | c == '3' = 3
+  | c == '4' = 4
+  | c == '5' = 5
+  | c == '6' = 6
+  | c == '7' = 7
+  | c == '8' = 8
+  | c == '9' = 9
+  | otherwise = error $ "Unexpected digit"
 
 -- Make is valid Identifier 
 lexerOperator :: String -> TokenValue
 lexerOperator op =
   case op of 
-    '+' = TokenPlus
-    '-' = TokenSub
-    '*' = TokenMult
-    "&&" = TokenAnd
-    ":= " = TokenAssign
-    "!=" = TokenLe
-    "==" = TokenIntEq
-    "=" = TokenBoolEq
-    _  = error $ "Lexer Error: Operator {" ++ op ++ "} does not exist"
+    "+" -> TokenPlus
+    "-" -> TokenSub
+    "*" -> TokenMult
+    "&&" -> TokenAnd
+    ":= " -> TokenAssign
+    "!=" -> TokenLe
+    "==" -> TokenIntEq
+    "=" -> TokenBoolEq
+    _  -> error $ "Lexer Error: Operator {" ++ op ++ "} does not exist"
 
 lexerKeyword :: String -> TokenValue
 lexerKeyword keyword =
   case keyword of 
-    "while" = TokenWhile
-    "do" = TokenDo
-    "if" = TokenIf
-    "else" = TokenElse
-    "then" = TokenThen
-    _  = error $ "Lexer Error: Keyword {" ++ keyword ++ "} does not exist"
+    "while" -> TokenWhile
+    "do" -> TokenDo
+    "if" -> TokenIf
+    "else" -> TokenElse
+    "then" -> TokenThen
+    _  -> error $ "Lexer Error: Keyword {" ++ keyword ++ "} does not exist"
 
+lexerSpecial :: String -> TokenValue
 lexerSpecial special =
   case special of 
-    ";" = TokenEndOfStatement
-    "(" = TokenOpenParenthesis
-    ")" = TokenClosedParenthesis
-    _ = error $ "Lexer Error: Keyword {" ++ special ++"} does not exist"
+    ";" -> TokenEndOfStatement
+    "(" -> TokenOpenParenthesis
+    ")" -> TokenClosedParenthesis
+    _ -> error $ "Lexer Error: Keyword {" ++ special ++"} does not exist"
 
+lexerBool :: String -> TokenValue
 lexerBool bool =
-  case special of
-    "True" = TokenBool True
-    "False" = TokenBool False
-    _ = error $ "Lexer Error: Keyword {" ++ bool ++"} does not exist"
+  case bool of
+    "True" -> TokenBool True
+    "False" -> TokenBool False
+    _ -> error $ "Lexer Error: Keyword {" ++ bool ++"} does not exist"
 
 lexer :: String -> [Token]
-lexer = lexer_aux 1 1 
+lexer = lexer_aux 1 1
 
-lexer_aux :: Integer -> Integer -> String -> [Token]
+lexer_aux :: Int -> Int -> String -> [Token]
 lexer_aux line column [] = []
 lexer_aux line column (x:xs)
-  -- Handle Numbers
   | isDigit x =
-     let (numeric, rest) = span isDigit (x:xs)
-          newPosition = Position line column
-          newType = TOK_INT
-          newValue = TokenInt (stringToInt numericPart)
-      in Token newType newValue newPosition : lexer_aux line (column + fromIntegral (length numeric)) rest
-   -- Handle Identifiers and Keywords
-   | isAlpha x =
-      let (ident, rest) = span isAlpha (x:xs)
+    let (numeric, rest) = my_span isDigit (x:xs)
         newPosition = Position line column
-        newType = 
-          | ident `elem` validKeywords = TOK_KEYWORD 
-          | ident `elem` validBool = TOK_BOOL 
-          | otherwise = TOK_IDENT
-        newValue =
-          | ident `elem` validKeywords = lexerKeyword ident
-          | ident `elem` validBool = lexerBool ident
-          | otherwise = TokenIdent ident
-      in Token newType newValue newPosition : lexer_aux line (column + fromIntegral (length ident)) rest
+        newType = TOK_INT
+        newValue = TokenInt (stringToInt numeric)
+    in Token newType newValue newPosition : lexer_aux line (column + length numeric) rest
 
-  -- Handle Operators
-  | x `elem` validOperators =
-          let (operator, rest) = span validOperators (x:xs)
-          newPosition = Position line column
-          newType = TOK_OPERATOR
-          newValue = lexerOperator operator
-          in Token newType newValue newPosition : lexer_aux line (column + fromIntegral (length operator)) rest
-  -- Handle Special chars
-  | x `elem` validSpecialChars =
-          newPosition = Position line column
-          newType = TOK_SPECIAL
-          newValue = lexerSpecial x
-          in Token newType newValue newPosition : lexer_aux line (column + 1) xs
-  | isSpace x = 
-      lexer_aux line (column + 1) xs
-  -- Error
-  | otherwise = 
-      error $ "Lexer error. Token {" ++ x ++ "} on {" ++ line ++ " " ++ column ++ "} not recognized"
+  | isAlpha x =
+    let (ident, rest) = my_span isAlpha (x:xs)
+        newPosition = Position line column
+        newType = case () of
+          _ | ident `my_elem` validKeywords -> TOK_KEYWORD
+            | ident `my_elem` validBool -> TOK_BOOL
+            | otherwise -> TOK_IDENT
+        newValue = case () of
+          _ | ident `my_elem` validKeywords -> lexerKeyword ident
+            | ident `my_elem` validBool -> lexerBool ident
+            | otherwise -> TokenIdent ident
+    in Token newType newValue newPosition : lexer_aux line (column + length ident) rest
 
+  | [x] `my_elem` validOperators =
+    let (operator, rest) = my_span (\c -> [c] `my_elem` validOperators) (x:xs)
+        newPosition = Position line column
+        newType = TOK_OPERATOR
+        newValue = lexerOperator operator
+    in Token newType newValue newPosition : lexer_aux line (column + length operator) rest
+
+  | [x] `my_elem` validSpecialChars =
+    let newPosition = Position line column
+        newType = TOK_SPECIAL
+        newValue = lexerSpecial [x]
+    in Token newType newValue newPosition : lexer_aux line (column + 1) xs
+
+  | isSpace x =
+    lexer_aux line (column + 1) xs
+
+  | otherwise =
+    error $ "Lexer error. Token {" ++ [x] ++ "} on {" ++ show line ++ " " ++ show column ++ "} not recognized"
