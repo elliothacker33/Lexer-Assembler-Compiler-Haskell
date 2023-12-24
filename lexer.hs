@@ -1,6 +1,6 @@
 --  This file implements a lexer for haskell
 
-import Data.Char (isAlpha, isDigit, isSpace)
+import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 
 -- All tokens that our lexer recognize as valid Tokens
 data TokenType =
@@ -66,8 +66,14 @@ data Token = Token {
   tokenType :: TokenType,
   tokenValue :: TokenValue,
   tokenPosition :: Position
-} deriving (Show)
+} 
 
+instance Show Token where
+  show (Token token_type token_value token_position) =
+    " \nToken:\n"
+    ++ "  Type: " ++ show token_type ++ "\n"
+    ++ "  Value: " ++ show token_value ++ "\n"
+    ++ "  Position: " ++ show token_position ++ "\n"
 
 validOperators :: [String]
 validOperators = ["+", "-", "*", "=", ":", "!"]
@@ -120,7 +126,8 @@ lexerOperator op =
     "-" -> TokenSub
     "*" -> TokenMult
     "&&" -> TokenAnd
-    ":= " -> TokenAssign
+    ":=" -> TokenAssign
+    "!" -> TokenNot
     "!=" -> TokenLe
     "==" -> TokenIntEq
     "=" -> TokenBoolEq
@@ -152,7 +159,7 @@ lexerBool bool =
     _ -> error $ "Lexer Error: Keyword {" ++ bool ++"} does not exist"
 
 lexer :: String -> [Token]
-lexer = lexer_aux 1 1
+lexer = lexer_aux 1 1 
 
 lexer_aux :: Int -> Int -> String -> [Token]
 lexer_aux line column [] = []
@@ -165,7 +172,7 @@ lexer_aux line column (x:xs)
     in Token newType newValue newPosition : lexer_aux line (column + length numeric) rest
 
   | isAlpha x =
-    let (ident, rest) = my_span isAlpha (x:xs)
+    let (ident, rest) = my_span isAlphaNum (x:xs)
         newPosition = Position line column
         newType = case () of
           _ | ident `my_elem` validKeywords -> TOK_KEYWORD
