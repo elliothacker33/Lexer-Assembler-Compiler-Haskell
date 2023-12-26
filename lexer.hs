@@ -1,4 +1,5 @@
 --  This file implements a lexer for haskell
+module Lexer where 
 
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 
@@ -128,7 +129,7 @@ lexerOperator op =
     "&&" -> TokenAnd
     ":=" -> TokenAssign
     "!" -> TokenNot
-    "!=" -> TokenLe
+    "<=" -> TokenLe
     "==" -> TokenIntEq
     "=" -> TokenBoolEq
     _  -> error $ "Lexer Error: Operator {" ++ op ++ "} does not exist"
