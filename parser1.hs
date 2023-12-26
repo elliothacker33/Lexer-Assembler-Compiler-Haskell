@@ -4,7 +4,7 @@ import Lexer
 
 data Stm =
     IfThenElse Bexp [Stm] [Stm]
-    | Loop Bexp [Stm]
+    | StmLoop Bexp [Stm]
     | NewVar String Aexp
     deriving (Show)
 data Aexp = 
@@ -50,48 +50,62 @@ compB (LessOrEqual e1 e2)
 
 
 parse :: [Token] -> [Stm]
-parse(Token TOK_SPECIAL TokenIf p:rest)=
+parse tokens = 
+    case parseT tokens of
+        Just (statements, []) ->
+            statements
+        Just (statements,s) ->
+            parse s
+
+
+parseT :: [Token] -> Maybe ([Stm], [Token])
+parseT(Token TOK_SPECIAL TokenIf p:rest)=
     case parseBoolOrParenOrEqualOrLeExpr r1 of
         Just (condition,[]) ->
-            [IfThenElse condition (parse (reverse r2)) (parse (reverse r3))]
+            case parseT rest1 of
+                Just (code,(Token _ TokenElse _):rest2)->
+                    case parseT rest2 of
+                        Just (codeelse,(Token _ TokenElse _):rest3)->
+                            Just ([IfThenElse condition code codeelse],rest3)
+                Nothing -> Nothing
         Nothing -> error "expected boolean function after if\n" 
     where
         (r1, rest1) = span (findToken TokenThen) rest
-        -- i used the reverse because i want the last occurence of the else
-        (r3, r2) = span (findToken TokenElse) (reverse rest1)
 
-parse(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
+parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
     case parseSumOrSubOrProdOrIntOrPar r1 of
         Just (ex1,[]) ->
-            [NewVar value ex1 ] 
+            Just ([NewVar value ex1 ],rest) 
         Nothing -> error "expected boolean function after if\n" 
     where
         (r1, rest1) = span (findToken TokenEndOfStatement) rest
 -- work in progress
-parse(Token _ TokenWhile p :rest)=
-    case parseSumOrSubOrProdOrIntOrPar r1 of
-        Just (ex1,[]) ->
-            [NewVar value ex1 ] 
-        Nothing -> error "expected boolean function after if\n" 
+parseT(Token _ TokenWhile p :rest)=
+    case parseBoolOrParenOrEqualOrLeExpr r1 of
+        Just (coditicion,[]) ->
+            case parseT rest1 of
+                Just (loop,rest4) ->
+                    Just([StmLoop coditicion loop ],rest4) 
+                Nothing -> error "expected a do before end\n"
+        Nothing -> error "expected boolean function after loop\n" 
     where
-        (r1, rest1) = span (findToken Token) rest
-        (r2, rest2) = span (findToken TokenElse) rest1
-        (r3, rest3) = span (findToken TokenElse) rest2
+        (r1, rest1) = span (findToken TokenDo) rest
 
-parse(Token TOK_IDENT (TokenIdent value) p :rest)=
+parseT(Token TOK_IDENT (TokenIdent value) p :rest)=
     case parseSumOrSubOrProdOrIntOrPar r1 of
         Just (ex1,[]) ->
-            [NewVar value ex1 ] 
+            Just([NewVar value ex1 ] ,rest)
         Nothing -> error "expected boolean function after if\n" 
     where
         (r1, rest1) = span (findToken TokenEndOfStatement) rest
 
-parse(Token _ TokenOpenParenthesis p : Token _ TokenAssign _ :rest)=
-    parse (reverse r1) ++ parse (reverse rest1)
+parseT(Token _ TokenOpenParenthesis p : Token _ TokenAssign _ :rest)=
+    Just(parse (reverse r1) ++ parse (reverse rest1),rest)
     where
         -- last occurence
         (rest1, r1) = span (findToken TokenEndOfStatement) (reverse rest)
 -- bool expr
+
 parseBoolOrParenExpr :: [Token] -> Maybe (Bexp, [Token])
 parseBoolOrParenExpr ((Token TOK_BOOL (TokenBool b) _ ) : restTokens) =
     Just (Bo b, restTokens)
