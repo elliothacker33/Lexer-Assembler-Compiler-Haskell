@@ -53,12 +53,12 @@ parse :: [Token] -> [Stm]
 parse(Token TOK_SPECIAL TokenIf p:rest)=
     case parseBoolOrParenOrEqualOrLeExpr r1 of
         Just (condition,[]) ->
-            [IfThenElse condition (parse r2) (parse r3)]
+            [IfThenElse condition (parse (reverse r2)) (parse (reverse r3))]
         Nothing -> error "expected boolean function after if\n" 
     where
         (r1, rest1) = span (findToken TokenThen) rest
-        (r2, rest2) = span (findToken TokenElse) rest1
-        (r3, rest3) = span (findToken TokenElse) rest2
+        -- i used the reverse because i want the last occurence of the else
+        (r3, r2) = span (findToken TokenElse) (reverse rest1)
 
 parse(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
     case parseSumOrSubOrProdOrIntOrPar r1 of
@@ -67,7 +67,7 @@ parse(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
         Nothing -> error "expected boolean function after if\n" 
     where
         (r1, rest1) = span (findToken TokenEndOfStatement) rest
-
+-- work in progress
 parse(Token _ TokenWhile p :rest)=
     case parseSumOrSubOrProdOrIntOrPar r1 of
         Just (ex1,[]) ->
