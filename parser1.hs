@@ -2,6 +2,11 @@
 import Compiler
 import Lexer
 
+data Stm =
+    IfThenElse Bexp [Stm] [Stm]
+    | Loop Bexp [Stm]
+    | NewVar String Aexp
+    deriving (Show)
 data Aexp = 
     OpAdd Aexp Aexp
     | OpMult Aexp Aexp
@@ -20,15 +25,10 @@ data Bexp =
 findToken :: TokenValue -> Token -> Bool
 findToken t (Token _ t1 _)  = t1 == t 
 
-compile :: [Token] -> Code
-compile (Token TOK_SPECIAL TokenIf p:rest)=
-    [Branch (compile r1) (compile r2), Branch (Neg:compile r1)  (compile r2)]
-    where
-        (r1, rest1) = span (findToken TokenThen) rest
-        (r2, rest2) = span (findToken TokenElse) rest1
-        (r3, rest3) = span (findToken TokenElse) rest2
+--compile :: [Stm] -> Code
+--compile (Token TOK_SPECIAL TokenIf p:rest)=
         
-
+--compile (lexer "if True Then u := 1 + 1 else  u := 2")
 compA :: Aexp -> Code
 compA (Num n) = [Push n]
 compA (OpAdd e1 e2)
@@ -49,6 +49,48 @@ compB (LessOrEqual e1 e2)
     = compA e1 ++ compA e2 ++ [Le]
 
 
+parse :: [Token] -> [Stm]
+parse(Token TOK_SPECIAL TokenIf p:rest)=
+    case parseBoolOrParenOrEqualOrLeExpr r1 of
+        Just (condition,[]) ->
+            [IfThenElse condition (parse r2) (parse r3)]
+        Nothing -> error "expected boolean function after if\n" 
+    where
+        (r1, rest1) = span (findToken TokenThen) rest
+        (r2, rest2) = span (findToken TokenElse) rest1
+        (r3, rest3) = span (findToken TokenElse) rest2
+
+parse(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
+    case parseSumOrSubOrProdOrIntOrPar r1 of
+        Just (ex1,[]) ->
+            [NewVar value ex1 ] 
+        Nothing -> error "expected boolean function after if\n" 
+    where
+        (r1, rest1) = span (findToken TokenEndOfStatement) rest
+
+parse(Token _ TokenWhile p :rest)=
+    case parseSumOrSubOrProdOrIntOrPar r1 of
+        Just (ex1,[]) ->
+            [NewVar value ex1 ] 
+        Nothing -> error "expected boolean function after if\n" 
+    where
+        (r1, rest1) = span (findToken Token) rest
+        (r2, rest2) = span (findToken TokenElse) rest1
+        (r3, rest3) = span (findToken TokenElse) rest2
+
+parse(Token TOK_IDENT (TokenIdent value) p :rest)=
+    case parseSumOrSubOrProdOrIntOrPar r1 of
+        Just (ex1,[]) ->
+            [NewVar value ex1 ] 
+        Nothing -> error "expected boolean function after if\n" 
+    where
+        (r1, rest1) = span (findToken TokenEndOfStatement) rest
+
+parse(Token _ TokenOpenParenthesis p : Token _ TokenAssign _ :rest)=
+    parse (reverse r1) ++ parse (reverse rest1)
+    where
+        -- last occurence
+        (rest1, r1) = span (findToken TokenEndOfStatement) (reverse rest)
 -- bool expr
 parseBoolOrParenExpr :: [Token] -> Maybe (Bexp, [Token])
 parseBoolOrParenExpr ((Token TOK_BOOL (TokenBool b) _ ) : restTokens) =
