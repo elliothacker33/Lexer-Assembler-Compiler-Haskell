@@ -1,10 +1,6 @@
 module Compiler where
 import Stack
 -- instruções da máquina virtual
-data Expr = OpAdd Expr Expr
-    | OpMult Expr Expr
-    | Num Integer
-    deriving (Eq, Show)
 
 data Inst =
     Push Integer | Add | Mult | Sub | Tru | Fals | Equ | Le | And | Neg | Fetch String | Store String | Noop |
@@ -22,13 +18,14 @@ type State = [Stored]
 
 createEmptyState:: [(String,Storeddata)]
 createEmptyState = []
+{-
 compile :: Expr -> Code
 compile (Num n) = [Push n]
 compile (OpAdd e1 e2)
     = compile e1 ++ compile e2 ++ [Add]
 compile (OpMult e1 e2)
     = compile e1 ++ compile e2 ++ [Mult]
-
+-}
 findStored:: State->String->Storeddata
 findStored [] s = error ("Value with key " ++ s ++" Not found")
 findStored ((x,stored):l) s

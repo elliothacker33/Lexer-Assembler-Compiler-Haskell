@@ -60,7 +60,7 @@ data TokenValue =
   -- Assignment Operators
   | TokenAssign
 
-  deriving (Show)
+  deriving (Show,Eq)
 
 data Token = Token {
   tokenType :: TokenType,
