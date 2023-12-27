@@ -12,6 +12,7 @@ data Aexp =
     | OpMult Aexp Aexp
     | OpSub Aexp Aexp
     | Num Integer
+    | GetVar String
     deriving (Eq, Show)
 data Bexp =
     Bo Bool
@@ -25,6 +26,13 @@ data Bexp =
 findToken :: TokenValue -> Token -> Bool
 findToken t (Token _ t1 _)  = t1 == t 
 
+findFirst :: (a -> Bool) -> [a] -> ([a],[a])
+findFirst _ [] = ([],[])
+findFirst op (x:xs) 
+    | op x = ([],x:xs)
+    | otherwise = (x:newList,oldlist)
+    where
+        (newList,oldlist) = findFirst op xs
 --compile :: [Stm] -> Code
 --compile (Token TOK_SPECIAL TokenIf p:rest)=
         
@@ -55,30 +63,47 @@ parse tokens =
         Just (statements, []) ->
             statements
         Just (statements,s) ->
-            parse s
+            statements ++ parse s
 
 
 parseT :: [Token] -> Maybe ([Stm], [Token])
-parseT(Token TOK_SPECIAL TokenIf p:rest)=
+parseT(Token _ TokenEndOfStatement p :rest)=
+    parseT rest
+
+parseT [] =
+    Just([],[])
+parseT(Token t TokenElse p :rest)=
+    Just([],Token t TokenElse p :rest)
+parseT(Token TOK_KEYWORD TokenIf p:rest)=
     case parseBoolOrParenOrEqualOrLeExpr r1 of
-        Just (condition,[]) ->
-            case parseT rest1 of
+        Just (condition,x) ->
+            case parseT $ tail rest1 of
                 Just (code,(Token _ TokenElse _):rest2)->
                     case parseT rest2 of
-                        Just (codeelse,(Token _ TokenElse _):rest3)->
+                        Just (codeelse,rest3)->
                             Just ([IfThenElse condition code codeelse],rest3)
-                Nothing -> Nothing
-        Nothing -> error "expected boolean function after if\n" 
+                        Nothing -> error "error parsing else statement\n" 
+                a ->  error $ "error parsing if code1\n" ++ show a 
+        a -> error $ "expected boolean function after if\n" ++ show r1
     where
-        (r1, rest1) = span (findToken TokenThen) rest
+        (r1, rest1) = findFirst (findToken TokenThen) rest
+parseT(Token TOK_KEYWORD TokenIf p:rest) =
+    error $ "case teste asasasas" ++  show rest
 
 parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
     case parseSumOrSubOrProdOrIntOrPar r1 of
         Just (ex1,[]) ->
-            Just ([NewVar value ex1 ],rest) 
-        Nothing -> error "expected boolean function after if\n" 
+            case parseT rest1 of
+                Just (ex2,rest2) ->
+                    Just((NewVar value ex1) :ex2 ,rest2)
+
+        Just (ex1,x) ->
+            error $ "cant work : "++ show x
+        Nothing -> error $ "something when wrong when trying to parse declare variable\n" ++ show r1
     where
-        (r1, rest1) = span (findToken TokenEndOfStatement) rest
+        (r1, rest1) = findFirst (findToken TokenEndOfStatement) rest
+
+
 -- work in progress
 parseT(Token _ TokenWhile p :rest)=
     case parseBoolOrParenOrEqualOrLeExpr r1 of
@@ -89,21 +114,13 @@ parseT(Token _ TokenWhile p :rest)=
                 Nothing -> error "expected a do before end\n"
         Nothing -> error "expected boolean function after loop\n" 
     where
-        (r1, rest1) = span (findToken TokenDo) rest
-
-parseT(Token TOK_IDENT (TokenIdent value) p :rest)=
-    case parseSumOrSubOrProdOrIntOrPar r1 of
-        Just (ex1,[]) ->
-            Just([NewVar value ex1 ] ,rest)
-        Nothing -> error "expected boolean function after if\n" 
-    where
-        (r1, rest1) = span (findToken TokenEndOfStatement) rest
+        (r1, rest1) = findFirst (findToken TokenDo) rest
 
 parseT(Token _ TokenOpenParenthesis p : Token _ TokenAssign _ :rest)=
     Just(parse (reverse r1) ++ parse (reverse rest1),rest)
     where
         -- last occurence
-        (rest1, r1) = span (findToken TokenEndOfStatement) (reverse rest)
+        (rest1, r1) = findFirst (findToken TokenEndOfStatement) (reverse rest)
 -- bool expr
 
 parseBoolOrParenExpr :: [Token] -> Maybe (Bexp, [Token])
@@ -114,14 +131,13 @@ parseBoolOrParenExpr ((Token TOK_SPECIAL TokenOpenParenthesis _): restTokens1) =
         Just (expr, (Token TOK_SPECIAL TokenClosedParenthesis _): restTokens2) ->
             Just (expr, restTokens2)
         Just _ -> Nothing -- no closing paren
-        Nothing -> Nothing
 parseBoolOrParenExpr tokens = Nothing
 
 
 parseBoolOrParenOrEqualOrLeExpr:: [Token] -> Maybe (Bexp, [Token])
 -- operations that generate bolleans
-parseBoolOrParenOrEqualOrLeExpr tokens =
-    case parseSumOrSubOrProdOrIntOrPar tokens of
+parseBoolOrParenOrEqualOrLeExpr ((Token TOK_INT (TokenInt value) p ):tokens) =
+    case parseSumOrSubOrProdOrIntOrPar $ Token TOK_INT (TokenInt value) p:tokens of
         Just (expr1,(Token TOK_OPERATOR TokenLe _) : restTokens1) ->
             case parseSumOrSubOrProdOrIntOrPar restTokens1 of
                 Just (expr2,restTokens2) ->
@@ -132,9 +148,27 @@ parseBoolOrParenOrEqualOrLeExpr tokens =
                 Just (expr2,restTokens2) ->
                     Just (IntEqual expr1 expr2,restTokens2)
                 Nothing -> Nothing
+        Just (x , y) ->
+            error ("error x: " ++ show x ++ " errory:" ++ show y)
+
+parseBoolOrParenOrEqualOrLeExpr ((Token TOK_IDENT (TokenIdent value) p ):tokens) =
+    case parseSumOrSubOrProdOrIntOrPar $ (Token TOK_IDENT (TokenIdent value) p ):tokens of
+        Just (expr1,(Token TOK_OPERATOR TokenLe _) : restTokens1) ->
+            case parseSumOrSubOrProdOrIntOrPar restTokens1 of
+                Just (expr2,restTokens2) ->
+                    Just (LessOrEqual expr1 expr2,restTokens2)
+                Nothing -> Nothing
+        Just (expr1,(Token TOK_OPERATOR TokenIntEq _) : restTokens1) ->
+            case parseSumOrSubOrProdOrIntOrPar restTokens1 of
+                Just (expr2,restTokens2) ->
+                    Just (IntEqual expr1 expr2,restTokens2)
+                Nothing -> Nothing
+        a->
+            error ("tokens :"++show a)
+
 -- operations with booleans
 parseBoolOrParenOrEqualOrLeExpr tokens =
-    case parseBoolOrParenOrEqualOrLeExpr tokens of
+    case parseBoolOrParenExpr tokens of
         Just (expr1,(Token TOK_OPERATOR TokenBoolEq _) : restTokens1) ->
             case parseBoolOrParenOrEqualOrLeExpr restTokens1 of
                 Just (expr2,restTokens2) ->
@@ -153,6 +187,8 @@ parseBoolOrParenOrEqualOrLeExpr tokens =
 parseIntOrParenExpr :: [Token] -> Maybe (Aexp, [Token])
 parseIntOrParenExpr ((Token TOK_INT (TokenInt n) _ ) : restTokens) =
     Just (Num $ fromIntegral n, restTokens)
+parseIntOrParenExpr ((Token TOK_IDENT (TokenIdent name) _ ) : restTokens) =
+    Just (GetVar name, restTokens)
 parseIntOrParenExpr ((Token TOK_SPECIAL TokenOpenParenthesis _): restTokens1) =
     case parseSumOrSubOrProdOrIntOrPar restTokens1 of
         Just (expr, (Token TOK_SPECIAL TokenClosedParenthesis _): restTokens2) ->
