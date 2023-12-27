@@ -43,7 +43,7 @@ compile (StmLoop boleanexp c:rest)=
 
 compile ( NewVar string exp:rest)=
     compA exp ++ [Store string] ++ compile rest
---compile (lexer "if True Then u := 1 + 1 else  u := 2")
+--compile (lexer "if True Then u := 1 + 1 ;else  u := 2")
 compA :: Aexp -> Code
 compA (Num n) = [Push n]
 compA  (GetVar s) = [Fetch s]
