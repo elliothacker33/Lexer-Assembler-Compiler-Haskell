@@ -33,12 +33,20 @@ findFirst op (x:xs)
     | otherwise = (x:newList,oldlist)
     where
         (newList,oldlist) = findFirst op xs
---compile :: [Stm] -> Code
---compile (Token TOK_SPECIAL TokenIf p:rest)=
-        
+compile :: [Stm] -> Code
+compile [] = []
+compile (IfThenElse boleanexp c1 c2:rest)=
+    compB boleanexp ++ [Branch (compile c1) (compile c2)]
+
+compile (StmLoop boleanexp c:rest)=
+    [Loop (compB boleanexp) (compile c)] ++ compile rest
+
+compile ( NewVar string exp:rest)=
+    compA exp ++ [Store string] ++ compile rest
 --compile (lexer "if True Then u := 1 + 1 else  u := 2")
 compA :: Aexp -> Code
 compA (Num n) = [Push n]
+compA  (GetVar s) = [Fetch s]
 compA (OpAdd e1 e2)
     = compA e1 ++ compA e2 ++ [Add]
 compA (OpMult e1 e2)
@@ -49,6 +57,7 @@ compA (OpSub e1 e2)
 compB :: Bexp -> Code
 compB (Bo False) = [Fals]
 compB (Bo True) = [Tru]
+compB (Negation b) = compB b ++[Neg]
 compB (IntEqual e1 e2)
     = compA e1 ++ compA e2 ++ [Equ]
 compB (Equal e1 e2)
