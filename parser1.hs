@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
+
 import Compiler
 import Lexer
 
@@ -83,13 +83,16 @@ parseT(Token TOK_KEYWORD TokenIf p:rest)=
                         Just (codeelse,rest3)->
                             Just ([IfThenElse condition code codeelse],rest3)
                         Nothing -> error "error parsing else statement\n" 
+                Just (code,(Token _ TokenEndOfStatement _):(Token _ TokenElse _):rest2)->
+                    case parseT rest2 of
+                        Just (codeelse,rest3)->
+                            Just ([IfThenElse condition code codeelse],rest3)
+                        Nothing -> error "error parsing else statement\n" 
                 a ->  error $ "error parsing if code1\n" ++ show a 
         a -> error $ "expected boolean function after if\n" ++ show r1
     where
         (r1, rest1) = findFirst (findToken TokenThen) rest
-parseT(Token TOK_KEYWORD TokenIf p:rest) =
-    error $ "case teste asasasas" ++  show rest
-
+-- parse $ lexer "if x== 3 then x:=3 else y:=3"
 parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
     case parseSumOrSubOrProdOrIntOrPar r1 of
         Just (ex1,[]) ->
@@ -99,7 +102,7 @@ parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
 
         Just (ex1,x) ->
             error $ "cant work : "++ show x
-        Nothing -> error $ "something when wrong when trying to parse declare variable\n" ++ show r1
+        Nothing -> error $ "something went wrong when trying to parse declare variable\n" ++ show r1
     where
         (r1, rest1) = findFirst (findToken TokenEndOfStatement) rest
 
@@ -116,16 +119,20 @@ parseT(Token _ TokenWhile p :rest)=
     where
         (r1, rest1) = findFirst (findToken TokenDo) rest
 
-parseT(Token _ TokenOpenParenthesis p : Token _ TokenAssign _ :rest)=
-    Just(parse (reverse r1) ++ parse (reverse rest1),rest)
-    where
-        -- last occurence
-        (rest1, r1) = findFirst (findToken TokenEndOfStatement) (reverse rest)
+parseT(Token _ TokenOpenParenthesis p :rest)=
+    case parseT rest of
+        Just(ex1,(Token _ TokenClosedParenthesis _):rest1) ->
+            Just(ex1,rest1)
+        a -> error $ "testing "++ show a -- no closing paren
+parseT(Token t TokenClosedParenthesis p :rest)=
+    Just([],Token t TokenClosedParenthesis p :rest)
+
 -- bool expr
 
 parseBoolOrParenExpr :: [Token] -> Maybe (Bexp, [Token])
 parseBoolOrParenExpr ((Token TOK_BOOL (TokenBool b) _ ) : restTokens) =
     Just (Bo b, restTokens)
+    
 parseBoolOrParenExpr ((Token TOK_SPECIAL TokenOpenParenthesis _): restTokens1) =
     case parseBoolOrParenOrEqualOrLeExpr restTokens1 of
         Just (expr, (Token TOK_SPECIAL TokenClosedParenthesis _): restTokens2) ->
@@ -221,3 +228,4 @@ parseSumOrSubOrProdOrIntOrPar tokens =
                     Just (OpAdd expr1 expr2,restTokens2)
                 Nothing -> Nothing
         result -> result
+-- parse lexer "if x == 3 then x:=x+1;else u:=2"
