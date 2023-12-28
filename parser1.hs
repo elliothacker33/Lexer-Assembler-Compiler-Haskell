@@ -81,61 +81,75 @@ parseT(Token _ TokenEndOfStatement p :rest)=
 
 parseT [] =
     Just([],[])
+
+parseT(Token t TokenDo p :rest)=
+    Just([],Token t TokenDo p :rest)
+
 parseT(Token t TokenElse p :rest)=
     Just([],Token t TokenElse p :rest)
-parseT(Token TOK_KEYWORD TokenIf p:rest)=
-    case parseBoolOrParenOrEqualOrLeExpr r1 of
-        Just (condition,x) ->
-            case parseT $ tail rest1 of
-                Just (code,(Token _ TokenElse _):rest2)->
-                    case parseT rest2 of
-                        Just (codeelse,rest3)->
-                            Just ([IfThenElse condition code codeelse],rest3)
-                        Nothing -> error "error parsing else statement\n" 
-                Just (code,(Token _ TokenEndOfStatement _):(Token _ TokenElse _):rest2)->
-                    case parseT rest2 of
-                        Just (codeelse,rest3)->
-                            Just ([IfThenElse condition code codeelse],rest3)
-                        Nothing -> error "error parsing else statement\n" 
-                a ->  error $ "error parsing if code1\n" ++ show a 
-        a -> error $ "expected boolean function after if\n" ++ show r1
-    where
-        (r1, rest1) = findFirst (findToken TokenThen) rest
--- parse $ lexer "if x== 3 then x:=3 else y:=3"
-parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
-    case parseSumOrSubOrProdOrIntOrPar r1 of
-        Just (ex1,[]) ->
-            case parseT rest1 of
-                Just (ex2,rest2) ->
-                    Just((NewVar value ex1) :ex2 ,rest2)
 
+parseT(Token TOK_KEYWORD TokenIf p:rest)=
+    case parseBoolOrParenOrEqualOrLeExpr rest of
+        Just (condition,rest1) ->
+            case parseThenStatement $ tail rest1 of
+                Just (code,(Token _ TokenElse _):rest2)->
+                    case parseElseOrDoStatement rest2 of
+                        Just (codeelse,rest3)->
+                            Just ([IfThenElse condition code codeelse],rest3)
+
+                        _ -> error "error parsing else statement\n" 
+                a ->  error $ "error parsing if code1\n" ++ show a 
+        a -> error $ "expected boolean function after if\n" ++ show rest
+
+-- parse $ lexer "if x== 3 then x:=3; else y:=3;"
+parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
+    case parseSumOrSubOrProdOrIntOrPar rest of
+        Just (ex1,(Token _ TokenEndOfStatement _ ):rest1) ->
+            Just([NewVar value ex1] ,rest1)
         Just (ex1,x) ->
-            error $ "cant work : "++ show x
-        Nothing -> error $ "something went wrong when trying to parse declare variable\n" ++ show r1
-    where
-        (r1, rest1) = findFirst (findToken TokenEndOfStatement) rest
+            error $ "Expected end of statement but found : "++ show ( head x)
+        Nothing -> error $ "something went wrong when trying to parse declare variable\n" ++ show rest
 
 
 -- work in progress
 parseT(Token _ TokenWhile p :rest)=
-    case parseBoolOrParenOrEqualOrLeExpr r1 of
-        Just (coditicion,[]) ->
-            case parseT rest1 of
+    case parseBoolOrParenOrEqualOrLeExpr rest of
+        Just (coditicion,(Token _ TokenDo _) :rest2) ->
+            case parseElseOrDoStatement rest2 of
                 Just (loop,rest4) ->
                     Just([StmLoop coditicion loop ],rest4) 
                 Nothing -> error "expected a do before end\n"
-        Nothing -> error "expected boolean function after loop\n" 
-    where
-        (r1, rest1) = findFirst (findToken TokenDo) rest
+        _ -> error "error while parsing while loop\n" 
 
-parseT(Token _ TokenOpenParenthesis p :rest)=
-    case parseT rest of
-        Just(ex1,(Token _ TokenClosedParenthesis _):rest1) ->
+parseT (t:rest)=
+    error $ "cound't parse :" ++ show t
+parseThenStatement:: [Token] -> Maybe ([Stm],[Token])
+parseThenStatement ((Token TOK_IDENT d p):tokens)=
+    parseT $ (Token TOK_IDENT d p):tokens
+
+parseThenStatement ((Token t TokenOpenParenthesis p):tokens)=
+    loopUntilCloseParentesis tokens
+
+parseElseOrDoStatement:: [Token] -> Maybe ([Stm],[Token])
+parseElseOrDoStatement ((Token TOK_IDENT d p):tokens)=
+    parseT $ (Token TOK_IDENT d p):tokens
+
+parseElseOrDoStatement ((Token t TokenOpenParenthesis p):tokens)=
+    case loopUntilCloseParentesis tokens of
+        Just (ex1 ,(Token t TokenEndOfStatement _):rest1) ->
             Just(ex1,rest1)
-        a -> error $ "testing "++ show a -- no closing paren
-parseT(Token t TokenClosedParenthesis p :rest)=
-    Just([],Token t TokenClosedParenthesis p :rest)
+        _ -> error "error expected ; after else statement"
 
+loopUntilCloseParentesis :: [Token] -> Maybe ([Stm],[Token])
+loopUntilCloseParentesis tokens=
+    case parseT tokens of
+        Just(ex1,Token _ TokenClosedParenthesis _ :rest)->
+            Just(ex1,rest)
+        Just(ex1,[]) -> error "didn't found close parentesis"
+        Just(ex1,tokens1) ->
+            case loopUntilCloseParentesis tokens1 of
+                Just(ex2,rest2) ->
+                    Just(ex1 ++ ex2 , rest2)
 -- bool expr
 
 parseBoolOrParenExpr :: [Token] -> Maybe (Bexp, [Token])
@@ -237,4 +251,4 @@ parseSumOrSubOrProdOrIntOrPar tokens =
                     Just (OpAdd expr1 expr2,restTokens2)
                 Nothing -> Nothing
         result -> result
--- parse lexer "if x == 3 then x:=x+1;else u:=2"
+-- parse lexer "if x == 3 then x:=x+1;else u:=2;"
