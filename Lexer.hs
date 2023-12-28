@@ -56,6 +56,7 @@ data TokenValue =
   -- Logical Operators
   | TokenNot
   | TokenAnd
+  | TokenOr
 
   -- Assignment Operators
   | TokenAssign
@@ -76,7 +77,7 @@ instance Show Token where
     ++ "  Position: " ++ show token_position ++ "\n"
 
 validOperators :: [String]
-validOperators = ["+", "-", "*", "=", ":", "!"]
+validOperators = ["+", "-", "*", "=", ":", "!","|","&","<"]
 
 validKeywords :: [String]
 validKeywords = ["while","do","if","then","else"]
@@ -126,9 +127,10 @@ lexerOperator op =
     "-" -> TokenSub
     "*" -> TokenMult
     "&&" -> TokenAnd
+    "||" -> TokenOr
     ":=" -> TokenAssign
     "!" -> TokenNot
-    "!=" -> TokenLe
+    "<=" -> TokenLe
     "==" -> TokenIntEq
     "=" -> TokenBoolEq
     _  -> error $ "Lexer Error: Operator {" ++ op ++ "} does not exist"

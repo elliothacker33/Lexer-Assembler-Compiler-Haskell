@@ -1,7 +1,7 @@
 
 import Compiler
 import Lexer
-
+import Stack
 data Stm =
     IfThenElse Bexp [Stm] [Stm]
     | StmLoop Bexp [Stm]
@@ -16,9 +16,10 @@ data Aexp =
     deriving (Eq, Show)
 data Bexp =
     Bo Bool
-    | And Bexp Bexp
     | IntEqual Aexp Aexp
     | Equal Bexp Bexp
+    | AndOp Bexp Bexp
+    -- | OrOp Bexp Bexp
     | LessOrEqual Aexp Aexp
     | Negation Bexp
     deriving (Eq, Show)
@@ -36,7 +37,7 @@ findFirst op (x:xs)
 compile :: [Stm] -> Code
 compile [] = []
 compile (IfThenElse boleanexp c1 c2:rest)=
-    compB boleanexp ++ [Branch (compile c1) (compile c2)]
+    compB boleanexp ++ [Branch (compile c1) (compile c2)] ++ compile rest
 
 compile (StmLoop boleanexp c:rest)=
     [Loop (compB boleanexp) (compile c)] ++ compile rest
@@ -48,22 +49,24 @@ compA :: Aexp -> Code
 compA (Num n) = [Push n]
 compA  (GetVar s) = [Fetch s]
 compA (OpAdd e1 e2)
-    = compA e1 ++ compA e2 ++ [Add]
+    = compA e2 ++ compA e1 ++ [Add]
 compA (OpMult e1 e2)
-    = compA e1 ++ compA e2 ++ [Mult]
+    = compA e2 ++ compA e1 ++ [Mult]
 compA (OpSub e1 e2)
-    = compA e1 ++ compA e2 ++ [Sub]
+    = compA e2 ++ compA e1 ++ [Sub]
 
 compB :: Bexp -> Code
 compB (Bo False) = [Fals]
 compB (Bo True) = [Tru]
 compB (Negation b) = compB b ++[Neg]
 compB (IntEqual e1 e2)
-    = compA e1 ++ compA e2 ++ [Equ]
+    = compA e2 ++ compA e1 ++ [Equ]
+compB (AndOp e1 e2)
+    = compB e2 ++ compB e1 ++ [And]
 compB (Equal e1 e2)
-    = compB e1 ++ compB e2 ++ [Equ]
+    = compB e2 ++ compB e1 ++ [Equ]
 compB (LessOrEqual e1 e2)
-    = compA e1 ++ compA e2 ++ [Le]
+    = compA e2 ++ compA e1 ++ [Le]
 
 
 parse :: [Token] -> [Stm]
@@ -88,8 +91,8 @@ parseT(Token t TokenDo p :rest)=
 parseT(Token t TokenElse p :rest)=
     Just([],Token t TokenElse p :rest)
 
-parseT(Token TOK_KEYWORD TokenIf p:rest)=
-    case parseBoolOrParenOrEqualOrLeExpr rest of
+parseT(Token TOK_KEYWORD TokenIf p:rest)= 
+    case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr rest of
         Just (condition,rest1) ->
             case parseThenStatement $ tail rest1 of
                 Just (code,(Token _ TokenElse _):rest2)->
@@ -113,7 +116,7 @@ parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
 
 -- work in progress
 parseT(Token _ TokenWhile p :rest)=
-    case parseBoolOrParenOrEqualOrLeExpr rest of
+    case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr rest of
         Just (coditicion,(Token _ TokenDo _) :rest2) ->
             case parseElseOrDoStatement rest2 of
                 Just (loop,rest4) ->
@@ -152,37 +155,60 @@ loopUntilCloseParentesis tokens=
                     Just(ex1 ++ ex2 , rest2)
 -- bool expr
 
-parseBoolOrParenExpr :: [Token] -> Maybe (Bexp, [Token])
-parseBoolOrParenExpr ((Token TOK_BOOL (TokenBool b) _ ) : restTokens) =
+parseNotOrBoolOrParenOrIntcompExpr :: [Token] -> Maybe (Bexp, [Token])
+parseNotOrBoolOrParenOrIntcompExpr ((Token TOK_BOOL (TokenBool b) _ ) : restTokens) =
     Just (Bo b, restTokens)
-    
-parseBoolOrParenExpr ((Token TOK_SPECIAL TokenOpenParenthesis _): restTokens1) =
-    case parseBoolOrParenOrEqualOrLeExpr restTokens1 of
+
+parseNotOrBoolOrParenOrIntcompExpr ((Token TOK_SPECIAL TokenOpenParenthesis _): restTokens1) =
+    case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr restTokens1 of
         Just (expr, (Token TOK_SPECIAL TokenClosedParenthesis _): restTokens2) ->
             Just (expr, restTokens2)
         Just _ -> Nothing -- no closing paren
-parseBoolOrParenExpr tokens = Nothing
+    
+parseNotOrBoolOrParenOrIntcompExpr ((Token _ TokenNot _): restTokens1) = 
+    case parseNotOrBoolOrParenOrIntcompExpr restTokens1 of
+        Just (expr,restTokens2) ->
+            Just (Negation expr, restTokens2)
+parseNotOrBoolOrParenOrIntcompExpr ((Token TOK_INT (TokenInt value) p ):tokens)= 
+    auxForAritemeticBolleanExpr ((Token TOK_INT (TokenInt value) p ):tokens)
+
+parseNotOrBoolOrParenOrIntcompExpr((Token TOK_IDENT (TokenIdent value) p ):tokens) =
+    auxForAritemeticBolleanExpr ((Token TOK_IDENT (TokenIdent value) p ):tokens)
+
+parseNotOrBoolOrParenOrIntcompExpr [] = error "suddenly end of boolean expression"
+parseNotOrBoolOrParenOrIntcompExpr tokens = error $ "cound't match Token :" ++ show (head tokens)
 
 
-parseBoolOrParenOrEqualOrLeExpr:: [Token] -> Maybe (Bexp, [Token])
--- operations that generate bolleans
-parseBoolOrParenOrEqualOrLeExpr ((Token TOK_INT (TokenInt value) p ):tokens) =
-    case parseSumOrSubOrProdOrIntOrPar $ Token TOK_INT (TokenInt value) p:tokens of
-        Just (expr1,(Token TOK_OPERATOR TokenLe _) : restTokens1) ->
-            case parseSumOrSubOrProdOrIntOrPar restTokens1 of
+parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr:: [Token] -> Maybe (Bexp, [Token])
+
+--parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr ((Token TOK_IDENT (TokenIdent value) p ):tokens) =
+
+
+-- operations with booleans
+parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr tokens = 
+    case parseNotOrBoolOrParenOrIntcompExpr tokens of
+        Just (expr1,(Token TOK_OPERATOR TokenBoolEq _) : restTokens1) ->
+            case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr restTokens1 of
                 Just (expr2,restTokens2) ->
-                    Just (LessOrEqual expr1 expr2,restTokens2)
+                    Just (Equal expr1 expr2,restTokens2)
                 Nothing -> Nothing
-        Just (expr1,(Token TOK_OPERATOR TokenIntEq _) : restTokens1) ->
-            case parseSumOrSubOrProdOrIntOrPar restTokens1 of
+        Just (expr1,(Token TOK_OPERATOR TokenAnd _) : restTokens1) ->
+            case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr restTokens1 of
                 Just (expr2,restTokens2) ->
-                    Just (IntEqual expr1 expr2,restTokens2)
+                    Just (AndOp expr1 expr2,restTokens2)
                 Nothing -> Nothing
-        Just (x , y) ->
-            error ("error x: " ++ show x ++ " errory:" ++ show y)
+                -- OR op não esta implementado no compilador
+        {-Just (expr1,(Token TOK_OPERATOR TokenOr _) : restTokens1) ->
+            case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr restTokens1 of
+                Just (expr2,restTokens2) ->
+                    Just (OrOp expr1 expr2,restTokens2)
+                Nothing -> Nothing-}
+        result -> result
+-- so that i can make a function that does aritemetic and bollean expressions so that i can do if x+2==3;
 
-parseBoolOrParenOrEqualOrLeExpr ((Token TOK_IDENT (TokenIdent value) p ):tokens) =
-    case parseSumOrSubOrProdOrIntOrPar $ (Token TOK_IDENT (TokenIdent value) p ):tokens of
+auxForAritemeticBolleanExpr :: [Token] -> Maybe (Bexp, [Token])
+auxForAritemeticBolleanExpr tokens = 
+    case parseSumOrSubOrProdOrIntOrPar tokens of
         Just (expr1,(Token TOK_OPERATOR TokenLe _) : restTokens1) ->
             case parseSumOrSubOrProdOrIntOrPar restTokens1 of
                 Just (expr2,restTokens2) ->
@@ -195,22 +221,6 @@ parseBoolOrParenOrEqualOrLeExpr ((Token TOK_IDENT (TokenIdent value) p ):tokens)
                 Nothing -> Nothing
         a->
             error ("tokens :"++show a)
-
--- operations with booleans
-parseBoolOrParenOrEqualOrLeExpr tokens =
-    case parseBoolOrParenExpr tokens of
-        Just (expr1,(Token TOK_OPERATOR TokenBoolEq _) : restTokens1) ->
-            case parseBoolOrParenOrEqualOrLeExpr restTokens1 of
-                Just (expr2,restTokens2) ->
-                    Just (Equal expr1 expr2,restTokens2)
-                Nothing -> Nothing
-        Just (expr1,(Token TOK_OPERATOR TokenAnd _) : restTokens1) ->
-            case parseBoolOrParenOrEqualOrLeExpr restTokens1 of
-                Just (expr2,restTokens2) ->
-                    Just (Equal expr1 expr2,restTokens2)
-                Nothing -> Nothing
-        result -> result
-
 
 -- aritemetic expr
 
@@ -248,7 +258,27 @@ parseSumOrSubOrProdOrIntOrPar tokens =
         Just (expr1,(Token TOK_OPERATOR TokenSub _) : restTokens1) ->
             case parseSumOrSubOrProdOrIntOrPar restTokens1 of
                 Just (expr2,restTokens2) ->
-                    Just (OpAdd expr1 expr2,restTokens2)
+                    Just (OpSub expr1 expr2,restTokens2)
                 Nothing -> Nothing
         result -> result
--- parse lexer "if x == 3 then x:=x+1;else u:=2;"
+-- parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr $ lexer "! True"
+testParser :: String -> (String, String)
+testParser programCode = (stack2Str stack, state2Str state)
+    where (_,stack,state) = run(compile (parse $ lexer programCode), createEmptyStack, createEmptyState)
+-- parse $ lexer "if ! (x == 3) then x:=x+1;else u:=2;"
+
+
+
+
+-- testParser "x := 5; x := x - 1;" == ("","x=4")
+-- testParser "x := 0 - 2;" == ("","x=-2")
+-- testParser "if (! True && 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
+-- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
+-- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
+-- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
+-- testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
+-- testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
+-- testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
+-- testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
+-- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
+-- testParser "i := 10; fact := 1; while (!(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
