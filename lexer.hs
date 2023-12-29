@@ -1,6 +1,5 @@
 --  This file implements a lexer for haskell
-module Lexer where 
-
+module Lexer where
 import Data.Char (isAlpha, isAlphaNum, isDigit, isSpace)
 
 -- All tokens that our lexer recognize as valid Tokens
@@ -57,11 +56,12 @@ data TokenValue =
   -- Logical Operators
   | TokenNot
   | TokenAnd
+  | TokenOr
 
   -- Assignment Operators
   | TokenAssign
 
-  deriving (Show)
+  deriving (Show,Eq)
 
 data Token = Token {
   tokenType :: TokenType,
@@ -77,7 +77,7 @@ instance Show Token where
     ++ "  Position: " ++ show token_position ++ "\n"
 
 validOperators :: [String]
-validOperators = ["+", "-", "*", "=", ":", "!"]
+validOperators = ["+", "-", "*", "=", ":","not","and","<"]
 
 validKeywords :: [String]
 validKeywords = ["while","do","if","then","else"]
@@ -127,8 +127,9 @@ lexerOperator op =
     "-" -> TokenSub
     "*" -> TokenMult
     "&&" -> TokenAnd
+    "||" -> TokenOr
     ":=" -> TokenAssign
-    "!" -> TokenNot
+    "not" -> TokenNot
     "<=" -> TokenLe
     "==" -> TokenIntEq
     "=" -> TokenBoolEq
@@ -178,10 +179,12 @@ lexer_aux line column (x:xs)
         newType = case () of
           _ | ident `my_elem` validKeywords -> TOK_KEYWORD
             | ident `my_elem` validBool -> TOK_BOOL
+            | ident `my_elem` validOperators -> TOK_OPERATOR
             | otherwise -> TOK_IDENT
         newValue = case () of
           _ | ident `my_elem` validKeywords -> lexerKeyword ident
             | ident `my_elem` validBool -> lexerBool ident
+            | ident `my_elem` validOperators -> lexerOperator ident
             | otherwise -> TokenIdent ident
     in Token newType newValue newPosition : lexer_aux line (column + length ident) rest
 
