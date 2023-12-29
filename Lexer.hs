@@ -138,7 +138,7 @@ lexerOperator op =
     "+" -> TokenPlus
     "-" -> TokenSub
     "*" -> TokenMult
-    "&&" -> TokenAnd
+    "and" -> TokenAnd
     "||" -> TokenOr
     ":=" -> TokenAssign
     "not" -> TokenNot
