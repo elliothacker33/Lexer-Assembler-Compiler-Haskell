@@ -79,8 +79,6 @@ parse tokens =
 
 
 parseT :: [Token] -> Maybe ([Stm], [Token])
-parseT(Token _ TokenEndOfStatement p :rest)=
-    parseT rest
 
 parseT [] =
     Just([],[])
@@ -277,7 +275,7 @@ main = do
     print b8
     print b10
     print b11
-    print b12
+    print b13
     where
         b1 = testParser "x := 5; x := x - 1;" == ("","x=4")
         b2 = testParser "x := 0 - 2;" == ("","x=-2")
@@ -286,6 +284,7 @@ main = do
         b5 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
         b6 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
         b7 = testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
+        b13 = testParser "x := 44; if x <= 43 then x := 1; else ( x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
         b8 = testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
         b9 = testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
         b10 = testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
