@@ -273,8 +273,10 @@ main = do
     print b6
     print b7
     print b8
+    print b9
     print b10
     print b11
+    print b12
     print b13
     where
         b1 = testParser "x := 5; x := x - 1;" == ("","x=4")
@@ -284,12 +286,12 @@ main = do
         b5 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
         b6 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
         b7 = testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
-        b13 = testParser "x := 44; if x <= 43 then x := 1; else ( x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
         b8 = testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
         b9 = testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
         b10 = testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
         b11 = testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
         b12 = testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
+        b13 = testParser "x := 44; if x <= 43 then x := 1; else ( x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
 -- testParser "x := 0 - 2;" == ("","x=-2")
