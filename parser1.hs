@@ -79,8 +79,6 @@ parse tokens =
 
 
 parseT :: [Token] -> Maybe ([Stm], [Token])
-parseT(Token _ TokenEndOfStatement p :rest)=
-    parseT rest
 
 parseT [] =
     Just([],[])
@@ -92,7 +90,7 @@ parseT(Token t TokenElse p :rest)=
     Just([],Token t TokenElse p :rest)
 
 parseT(Token TOK_KEYWORD TokenIf p:rest)= 
-    case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr rest of
+    case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr rest of
         Just (condition,rest1) ->
             case parseThenStatement $ tail rest1 of
                 Just (code,(Token _ TokenElse _):rest2)->
@@ -116,7 +114,7 @@ parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
 
 -- work in progress
 parseT(Token _ TokenWhile p :rest)=
-    case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr rest of
+    case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr rest of
         Just (coditicion,(Token _ TokenDo _) :rest2) ->
             case parseElseOrDoStatement rest2 of
                 Just (loop,rest4) ->
@@ -160,7 +158,7 @@ parseNotOrBoolOrParenOrIntcompExpr ((Token TOK_BOOL (TokenBool b) _ ) : restToke
     Just (Bo b, restTokens)
 
 parseNotOrBoolOrParenOrIntcompExpr ((Token TOK_SPECIAL TokenOpenParenthesis _): restTokens1) =
-    case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr restTokens1 of
+    case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr restTokens1 of
         Just (expr, (Token TOK_SPECIAL TokenClosedParenthesis _): restTokens2) ->
             Just (expr, restTokens2)
         Just _ -> Nothing -- no closing paren
@@ -179,30 +177,29 @@ parseNotOrBoolOrParenOrIntcompExpr [] = error "suddenly end of boolean expressio
 parseNotOrBoolOrParenOrIntcompExpr tokens = error $ "cound't match Token :" ++ show (head tokens)
 
 
-parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr:: [Token] -> Maybe (Bexp, [Token])
-
---parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr ((Token TOK_IDENT (TokenIdent value) p ):tokens) =
+parseBoolOrParenOrEqualOrLeOrNotExpr:: [Token] -> Maybe (Bexp, [Token])
 
 
 -- operations with booleans
-parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr tokens = 
+parseBoolOrParenOrEqualOrLeOrNotExpr tokens = 
     case parseNotOrBoolOrParenOrIntcompExpr tokens of
         Just (expr1,(Token TOK_OPERATOR TokenBoolEq _) : restTokens1) ->
-            case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr restTokens1 of
+            case parseBoolOrParenOrEqualOrLeOrNotExpr restTokens1 of
                 Just (expr2,restTokens2) ->
                     Just (Equal expr1 expr2,restTokens2)
                 Nothing -> Nothing
+        result -> result
+
+
+parseBoolOrParenOrEqualOrLeOrNotOrAndExpr:: [Token] -> Maybe (Bexp, [Token])
+-- operations with booleans
+parseBoolOrParenOrEqualOrLeOrNotOrAndExpr tokens = 
+    case parseBoolOrParenOrEqualOrLeOrNotExpr tokens of
         Just (expr1,(Token TOK_OPERATOR TokenAnd _) : restTokens1) ->
-            case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr restTokens1 of
+            case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr restTokens1 of
                 Just (expr2,restTokens2) ->
                     Just (AndOp expr1 expr2,restTokens2)
                 Nothing -> Nothing
-                -- OR op não esta implementado no compilador
-        {-Just (expr1,(Token TOK_OPERATOR TokenOr _) : restTokens1) ->
-            case parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr restTokens1 of
-                Just (expr2,restTokens2) ->
-                    Just (OrOp expr1 expr2,restTokens2)
-                Nothing -> Nothing-}
         result -> result
 -- so that i can make a function that does aritemetic and bollean expressions so that i can do if x+2==3;
 
@@ -261,14 +258,40 @@ parseSumOrSubOrProdOrIntOrPar tokens =
                     Just (OpSub expr1 expr2,restTokens2)
                 Nothing -> Nothing
         result -> result
--- parseBoolOrParenOrEqualOrLeOrNotOrAndOrorExpr $ lexer "! True"
+-- parseBoolOrParenOrEqualOrLeOrNotExpr $ lexer "! True"
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
     where (_,stack,state) = run(compile (parse $ lexer programCode), createEmptyStack, createEmptyState)
 -- parse $ lexer "if ! (x == 3) then x:=x+1;else u:=2;"
-
-
-
+-- tests
+main = do
+    print b1
+    print b2
+    print b3
+    print b4
+    print b5
+    print b6
+    print b7
+    print b8
+    print b9
+    print b10
+    print b11
+    print b12
+    print b13
+    where
+        b1 = testParser "x := 5; x := x - 1;" == ("","x=4")
+        b2 = testParser "x := 0 - 2;" == ("","x=-2")
+        b3 = testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
+        b4 = testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
+        b5 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
+        b6 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
+        b7 = testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
+        b8 = testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
+        b9 = testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
+        b10 = testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
+        b11 = testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
+        b12 = testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
+        b13 = testParser "x := 44; if x <= 43 then x := 1; else ( x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
 -- testParser "x := 0 - 2;" == ("","x=-2")
