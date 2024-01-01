@@ -58,7 +58,6 @@ data TokenValue =
   -- Logical Operators
   | TokenNot
   | TokenAnd
-  | TokenOr
 
   -- Assignment Operators
   | TokenAssign
@@ -139,7 +138,6 @@ lexerOperator op =
     "-" -> TokenSub
     "*" -> TokenMult
     "and" -> TokenAnd
-    "||" -> TokenOr
     ":=" -> TokenAssign
     "not" -> TokenNot
     "<=" -> TokenLe
@@ -174,6 +172,7 @@ lexerBool bool =
     "True" -> TokenBool True
     "False" -> TokenBool False
     _ -> error $ "Lexer Error: Keyword {" ++ bool ++"} does not exist"
+    
 -- Main lexer function that processes the input string and produces a list of tokens
 lexer :: String -> [Token]
 lexer = lexer_aux 1 1 

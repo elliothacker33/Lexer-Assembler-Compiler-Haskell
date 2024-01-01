@@ -1,5 +1,6 @@
 module Compiler where
 import Stack
+import Parser
 -- instruções da máquina virtual
 
 data Inst =
@@ -134,24 +135,44 @@ state2Strtmp [] = ""
 state2Strtmp [(s,x)] = s ++ "=" ++ storeddataToString x
 state2Strtmp ((s,x):l) = s ++ "=" ++ storeddataToString x ++ "," ++ state2Str l
 
+compile :: [Stm] -> Code
+compile [] = []
+compile (IfThenElse boleanexp c1 c2:rest)=
+    compB boleanexp ++ [Branch (compile c1) (compile c2)] ++ compile rest
+
+compile (StmLoop boleanexp c:rest)=
+    [Loop (compB boleanexp) (compile c)] ++ compile rest
+
+compile ( NewVar string exp:rest)=
+    compA exp ++ [Store string] ++ compile rest
+--compile (lexer "if True Then u := 1 + 1 ;else  u := 2")
+compA :: Aexp -> Code
+compA (Num n) = [Push n]
+compA  (GetVar s) = [Fetch s]
+compA (OpAdd e1 e2)
+    = compA e2 ++ compA e1 ++ [Add]
+compA (OpMult e1 e2)
+    = compA e2 ++ compA e1 ++ [Mult]
+compA (OpSub e1 e2)
+    = compA e2 ++ compA e1 ++ [Sub]
+
+compB :: Bexp -> Code
+compB (Bo False) = [Fals]
+compB (Bo True) = [Tru]
+compB (Negation b) = compB b ++[Neg]
+compB (IntEqual e1 e2)
+    = compA e2 ++ compA e1 ++ [Equ]
+compB (AndOp e1 e2)
+    = compB e2 ++ compB e1 ++ [And]
+compB (Equal e1 e2)
+    = compB e2 ++ compB e1 ++ [Equ]
+compB (LessOrEqual e1 e2)
+    = compA e2 ++ compA e1 ++ [Le]
+
+
 run :: ( Code,Stack Storeddata,State) -> (Code,Stack Storeddata,State)
 run ([],stack,stored) = ([],stack,stored)
 run s = run (exec s)
 
 
 
-
-testAssembler :: Code -> (String, String)
-testAssembler code = (stack2Str stack, state2Str state)
-    where (_,stack,state) = run (code,createEmptyStack,createEmptyState)
-
--- tests
---testAssembler [Push 10,Push 4,Push 3,Sub,Mult] == ("-10","")
---testAssembler [Fals,Push 3,Tru,Store "var",Store "a", Store "someVar"] == ("","a=3,someVar=False,var=True")
---testAssembler [Fals,Store "var",Fetch "var"] == ("False","var=False")
---testAssembler [Push (-20),Tru,Fals] == ("False,True,-20","")
---testAssembler [Push (-20),Tru,Tru,Neg] == ("False,True,-20","")
---testAssembler [Push (-20),Tru,Tru,Neg,Equ] == ("False,-20","")
---testAssembler [Push (-20),Push (-21), Le] == ("True","")
---testAssembler [Push 5,Store "x",Push 1,Fetch "x",Sub,Store "x"] == ("","x=4")
---testAssembler [Push 10,Store "i",Push 1,Store "fact",Loop [Push 1,Fetch "i",Equ,Neg] [Fetch "i",Fetch "fact",Mult,Store"fact",Push 1,Fetch "i",Sub,Store "i"]] == ("","fact=3628800,i=1")
