@@ -14,6 +14,13 @@
 
 
 
+
+##  Group and Contributions
+
+- Tomás Alexandre Torres Pereira (up202108845@edu.fe.up.pt), contribution -> 
+
+- Tomás Miranda de Figueiredo Sarmento (up202108778@edu.fe.up.pt), contribution -> 
+
 ##  Instructions
 1. First download the zip file 
 2. Open  the source folder and on a terminal go to GHCI  v9.0
@@ -26,12 +33,6 @@ Options:
 	3. Exit
   
   > **_NOTE:_** For custom assembler tests put another test in test.hs file.
-
-##  Group and Contributions
-
-- Tomás Alexandre Torres Pereira (up202108845@edu.fe.up.pt), contribution -> 
-
-- Tomás Miranda de Figueiredo Sarmento (up202108778@edu.fe.up.pt), contribution -> 
 
 ## Parser
 - this functions calls the lexer to transform the string in tokens and the it calls the 
