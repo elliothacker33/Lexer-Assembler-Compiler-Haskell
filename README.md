@@ -235,7 +235,7 @@ data Bexp =
 ### parse aritemetic operations
 - to parse the aritemetic functions with the priorities of the operations we defined the function **parseSumOrSubOrProdOrIntOrPar** with help of the teacher at the beginning of this function we call the **parseIntOrParenOrMult** because it has a higher priority and in the begining of this function we called **parseIntOrParenExpr** this function has the highest priotity because a int cannot be broken further and a parentesis can change the priority of the operations wich makes sense be with the highest priority
 
-```
+```haskell
 parseIntOrParenExpr :: [Token] -> Maybe (Aexp, [Token])
 parseIntOrParenExpr ((Token TOK_INT (TokenInt n) _ ) : restTokens) =
     Just (Num $ fromIntegral n, restTokens)
