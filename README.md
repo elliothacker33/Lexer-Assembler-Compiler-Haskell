@@ -21,9 +21,9 @@
 
 ##  Group and Contributions
 
-- Tomás Alexandre Torres Pereira (up202108845@edu.fe.up.pt), contribution -> 
+- Tomás Alexandre Torres Pereira (up202108845@edu.fe.up.pt), contribution -> 50%
 
-- Tomás Miranda de Figueiredo Sarmento (up202108778@edu.fe.up.pt), contribution -> 
+- Tomás Miranda de Figueiredo Sarmento (up202108778@edu.fe.up.pt), contribution -> 50%
 
 ##  Instructions
 1. First download the zip file 
