@@ -12,7 +12,7 @@
 
 - [Parser](#parser)
 
-- [Interpeter (Part1 do projeto)](#interpreter)
+- [Assembler (Part1 do projeto)](#assembler)
 
 - [Stack](#stack)
 
@@ -476,7 +476,7 @@ compA (OpSub e1 e2)
     = compA e2 ++ compA e1 ++ [Sub]
 ```
 
-## Interpreter
+## Assembler
 
 - we added this struct to better define the data that we added to the stack TT and FF for true and false and then N Integer for the number
 
