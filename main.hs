@@ -22,17 +22,7 @@ data Bexp =
     | LessOrEqual Aexp Aexp
     | Negation Bexp
     deriving (Eq, Show)
--- temos que por isto prgram
-findToken :: TokenValue -> Token -> Bool
-findToken t (Token _ t1 _)  = t1 == t 
 
-findFirst :: (a -> Bool) -> [a] -> ([a],[a])
-findFirst _ [] = ([],[])
-findFirst op (x:xs) 
-    | op x = ([],x:xs)
-    | otherwise = (x:newList,oldlist)
-    where
-        (newList,oldlist) = findFirst op xs
 compile :: [Stm] -> Code
 compile [] = []
 compile (IfThenElse boleanexp c1 c2:rest)=
@@ -78,18 +68,11 @@ parseTmp tokens =
         Just (statements,s) ->
             statements ++ parseTmp s
 
-
+-- parseT function that actually parses each statement at a time
 parseT :: [Token] -> Maybe ([Stm], [Token])
 
 parseT [] =
     Just([],[])
-
-parseT(Token t TokenDo p :rest)=
-    Just([],Token t TokenDo p :rest)
-
-parseT(Token t TokenElse p :rest)=
-    Just([],Token t TokenElse p :rest)
-
 parseT(Token TOK_KEYWORD TokenIf p:rest)= 
     case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr rest of
         Just (condition,rest1) ->
@@ -103,7 +86,6 @@ parseT(Token TOK_KEYWORD TokenIf p:rest)=
                 a ->  error $ "error parsing if code1\n" ++ show a 
         a -> error $ "expected boolean function after if\n" ++ show rest
 
--- parse $ lexer "if x== 3 then x:=3; else y:=3;"
 parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
     case parseSumOrSubOrProdOrIntOrPar rest of
         Just (ex1,(Token _ TokenEndOfStatement _ ):rest1) ->
@@ -113,7 +95,6 @@ parseT(Token TOK_IDENT (TokenIdent value) p : Token _ TokenAssign _ :rest)=
         Nothing -> error $ "something went wrong when trying to parse declare variable\n" ++ show rest
 
 
--- work in progress
 parseT(Token _ TokenWhile p :rest)=
     case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr rest of
         Just (coditicion,(Token _ TokenDo _) :rest2) ->
@@ -141,7 +122,7 @@ parseElseOrDoStatement ((Token t TokenOpenParenthesis p):tokens)=
         Just (ex1 ,(Token t TokenEndOfStatement _):rest1) ->
             Just(ex1,rest1)
         _ -> error "error expected ; after else statement"
-
+-- function that keeps calling the parseT until it finds the close parenthesis token or it doesn't have more tokens
 loopUntilCloseParentesis :: [Token] -> Maybe ([Stm],[Token])
 loopUntilCloseParentesis tokens=
     case parseT tokens of
@@ -152,7 +133,8 @@ loopUntilCloseParentesis tokens=
             case loopUntilCloseParentesis tokens1 of
                 Just(ex2,rest2) ->
                     Just(ex1 ++ ex2 , rest2)
--- bool expr
+---------------------------------------------- bollean expr-----------------------------------------------
+-- handles parentesis that affect the bolleans
 bolleanParentesis :: [Token] -> Maybe (Bexp,[Token])
 bolleanParentesis ((Token TOK_SPECIAL TokenOpenParenthesis p): restTokens1) =
     case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr restTokens1 of
@@ -160,7 +142,7 @@ bolleanParentesis ((Token TOK_SPECIAL TokenOpenParenthesis p): restTokens1) =
             Just (expr, restTokens2)
         Just _ -> Nothing -- no closing paren
 bolleanParentesis a = error $ "didn't expect " ++ show (head a)
-
+-- this function parses Not Or Bool Or Paren Or Intcomp
 parseNotOrBoolOrParenOrIntcompExpr :: [Token] -> Maybe (Bexp, [Token])
 parseNotOrBoolOrParenOrIntcompExpr ((Token TOK_BOOL (TokenBool b) _ ) : restTokens) =
     Just (Bo b, restTokens)
@@ -181,7 +163,7 @@ parseNotOrBoolOrParenOrIntcompExpr((Token TOK_IDENT (TokenIdent value) p ):token
 parseNotOrBoolOrParenOrIntcompExpr [] = error "suddenly end of boolean expression"
 parseNotOrBoolOrParenOrIntcompExpr tokens = error $ "cound't match Token :" ++ show (head tokens)
 
-
+-- this function parses Bool Or Paren Or Equal Or Le Or Not
 parseBoolOrParenOrEqualOrLeOrNotExpr:: [Token] -> Maybe (Bexp, [Token])
 
 
@@ -263,11 +245,9 @@ parseSumOrSubOrProdOrIntOrPar tokens =
                     Just (OpSub expr1 expr2,restTokens2)
                 Nothing -> Nothing
         result -> result
--- parseBoolOrParenOrEqualOrLeOrNotExpr $ lexer "! True"
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
     where (_,stack,state) = run(compile (parse programCode), createEmptyStack, createEmptyState)
--- parse $ lexer "if ! (x == 3) then x:=x+1;else u:=2;"
 -- tests
 main = do
     print b1
@@ -284,6 +264,7 @@ main = do
     print b12
     print b13
     print b14
+    print "end"
     where
         b1 = testParser "x := 5; x := x - 1;" == ("","x=4")
         b2 = testParser "x := 0 - 2;" == ("","x=-2")
