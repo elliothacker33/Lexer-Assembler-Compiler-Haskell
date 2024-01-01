@@ -12,6 +12,8 @@
 
 - [Parser](#parser)
 
+- [Stack](#stack)
+
 
 
 
@@ -470,4 +472,45 @@ compA (OpMult e1 e2)
     = compA e2 ++ compA e1 ++ [Mult]
 compA (OpSub e1 e2)
     = compA e2 ++ compA e1 ++ [Sub]
+```
+##  Stack
+Our stack is supposed to take instructions and  with the stack we can make operations on that instructions.
+For that we declarated a 
+```haskell
+data Stack a = Stk [a] 
+```
+This means that the data is called Stack and has  a constructor Stk that takes in our compiler instructions.
+Then we defined multiple operations for the stack that allows the compiler to use the stack in diverse ways.
+
+**Push**
+The push function puts a new instruction in the top of the stack.
+```haskell
+push :: a -> Stack a -> Stack  a
+push x (Stk xs) = Stk (x:xs)
+```
+**Pop** 
+The pop functions removes the top element of the stack.
+```haskell
+pop :: Stack a -> Stack a
+pop (Stk (_:xs)) = Stk xs
+pop _ = error "Stack.pop: empty stack"
+```
+**Top**
+The top functions retrieves the top instruction in the stack.
+```haskell
+top :: Stack a -> a
+top (Stk (x:_)) = x
+```
+**Create empty stack**
+The createEmptyStack function just calls the constructor Stk without  instructions.
+```haskell
+createEmptyStack :: Stack a
+createEmptyStack = Stk []
+```
+**Is the stack empty?**
+The isEmpty function checks if the stack has no instructions.
+```haskell
+isEmpty :: Stack  a -> Bool
+isEmpty (Stk  []) = True
+isEmpty (Stk _) =  False
 ```
