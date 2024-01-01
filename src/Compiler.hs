@@ -19,14 +19,7 @@ type State = [Stored]
 
 createEmptyState:: [(String,Storeddata)]
 createEmptyState = []
-{-
-compile :: Expr -> Code
-compile (Num n) = [Push n]
-compile (OpAdd e1 e2)
-    = compile e1 ++ compile e2 ++ [Add]
-compile (OpMult e1 e2)
-    = compile e1 ++ compile e2 ++ [Mult]
--}
+
 findStored:: State->String->Storeddata
 findStored [] s = error ("Value with key " ++ s ++" Not found")
 findStored ((x,stored):l) s
