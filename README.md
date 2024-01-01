@@ -12,6 +12,10 @@
 
 - [Parser](#parser)
 
+- [Interpeter (Part1 do projeto)](#interpreter)
+
+- [Stack](#stack)
+
 
 
 
@@ -472,7 +476,7 @@ compA (OpSub e1 e2)
     = compA e2 ++ compA e1 ++ [Sub]
 ```
 
-## Intrepeter (Part 1 do projeto)
+## Interpreter
 
 - we added this struct to better define the data that we added to the stack TT and FF for true and false and then N Integer for the number
 
@@ -570,4 +574,45 @@ state2Strtmp :: State -> String
 state2Strtmp [] = ""
 state2Strtmp [(s,x)] = s ++ "=" ++ storeddataToString x
 state2Strtmp ((s,x):l) = s ++ "=" ++ storeddataToString x ++ "," ++ state2Str l
+```
+##  Stack
+Our stack is supposed to take instructions and  with the stack we can make operations on that instructions.
+For that we declarated a 
+```haskell
+data Stack a = Stk [a] 
+```
+This means that the data is called Stack and has  a constructor Stk that takes in our compiler instructions.
+Then we defined multiple operations for the stack that allows the compiler to use the stack in diverse ways.
+
+**Push**\
+The push function puts a new instruction in the top of the stack.
+```haskell
+push :: a -> Stack a -> Stack  a
+push x (Stk xs) = Stk (x:xs)
+```
+**Pop** \
+The pop functions removes the top element of the stack.
+```haskell
+pop :: Stack a -> Stack a
+pop (Stk (_:xs)) = Stk xs
+pop _ = error "Stack.pop: empty stack"
+```
+**Top**\
+The top functions retrieves the top instruction in the stack.
+```haskell
+top :: Stack a -> a
+top (Stk (x:_)) = x
+```
+**Create empty stack**\
+The createEmptyStack function just calls the constructor Stk without  instructions.
+```haskell
+createEmptyStack :: Stack a
+createEmptyStack = Stk []
+```
+**Is the stack empty?**\
+The isEmpty function checks if the stack has no instructions.
+```haskell
+isEmpty :: Stack  a -> Bool
+isEmpty (Stk  []) = True
+isEmpty (Stk _) =  False
 ```
