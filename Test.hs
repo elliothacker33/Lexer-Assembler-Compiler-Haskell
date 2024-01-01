@@ -27,7 +27,7 @@ runAssemblerTests = do
 -- Test parser function
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
-    where (_,stack,state) = run(compile (parse $ lexer programCode), createEmptyStack, createEmptyState)
+    where (_,stack,state) = run(compile (parse programCode), createEmptyStack, createEmptyState)
 
 runParserTests :: IO()
 runParserTests = do

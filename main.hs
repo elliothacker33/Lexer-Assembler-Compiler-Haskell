@@ -1,3 +1,4 @@
+
 import Test
 import System.Exit (exitSuccess)
 
@@ -13,8 +14,7 @@ custom_main = do
     putStrLn "Choose an option:"
     putStrLn "1. Run tests"
     putStrLn "2. Run custom input for Parser"
-    putStrLn "3. Run custom input for Assembler"
-    putStrLn "4. Quit"
+    putStrLn "3. Quit"
     
     option <- getLine
     
@@ -29,10 +29,4 @@ custom_main = do
             let result = testParser input
             putStrLn $ "Result: " ++ show result
             custom_main
-        "3" -> do 
-            putStrLn "Enter custom input for Assembler"
-            input <- getLine
-            let result = testAssembler input
-            putStrLn $ "Result: " ++ show result
-            custom_main
-        "4" -> exitSuccess
+        "3" -> exitSuccess
