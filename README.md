@@ -35,11 +35,7 @@ Token types:
 	
 	TOK_SPECIAL,TOK_INT,TOK_BOOL,TOK_IDENT,TOK_KEYWORD,TOK_OPERATOR
 
-```
-```
 > **_NOTE:_**    We included token types in our lexer because lexers typically utilize them. Without this specification, the structure would technically resemble that of a tokenizer.
-```
-```
   
 Token values: 
 
@@ -53,11 +49,9 @@ data Position = Position {
   column :: Int
 } deriving (Show)
 ```
-```
-```
+
 > **_NOTE:_**    We incorporated token position in our lexer to enhance the user experience during debugging.
-```
-```
+
 The main lexer function is defined by 
 ```haskell
   lexer:: String -> [Tokens]
@@ -165,8 +159,6 @@ instance Show Token where
     ++ "  Position: " ++ show token_position ++ "\n"
 ```
 
-```
-```
+
 > **_NOTE:_**     The line in position will never change for this assignment.
-```
-```
+
