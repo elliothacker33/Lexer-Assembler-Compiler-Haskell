@@ -187,5 +187,79 @@ instance Show Token where
 
 ## parseT
 
-- This function given a list of tokens it parses the first statement it founds like a if , a while or a 'x:=3 ' and returns the rest of the tokens to be parsed further
+- This function given a list of tokens it parses the first statement it founds like a if , a while or a 'x:=3 ' and returns the rest of the tokens to be parsed further.The parseT function parses all statements related to the first statement it finds like in a if it might be a "x:=3" or three inside this function parses it
 ### parse aritemetic operations
+- to parse the aritemetic functions with the priorities of the operations we defined the function **parseSumOrSubOrProdOrIntOrPar** with help of the teacher at the beginning of this function we call the **parseIntOrParenOrMult** because it has a higher priority and in the begining of this function we called **parseIntOrParenExpr** this function has the highest priotity because a int cannot be broken further and a parentesis can change the priority of the operations wich makes sense be with the highest priority
+
+```
+parseIntOrParenExpr :: [Token] -> Maybe (Aexp, [Token])
+parseIntOrParenExpr ((Token TOK_INT (TokenInt n) _ ) : restTokens) =
+    Just (Num $ fromIntegral n, restTokens)
+parseIntOrParenExpr ((Token TOK_IDENT (TokenIdent name) _ ) : restTokens) =
+    Just (GetVar name, restTokens)
+parseIntOrParenExpr ((Token TOK_SPECIAL TokenOpenParenthesis _): restTokens1) =
+    case parseSumOrSubOrProdOrIntOrPar restTokens1 of
+        Just (expr, (Token TOK_SPECIAL TokenClosedParenthesis _): restTokens2) ->
+            Just (expr, restTokens2)
+        Just _ -> Nothing -- no closing paren
+        Nothing -> Nothing
+parseIntOrParenExpr tokens = Nothing
+
+parseIntOrParenOrMult :: [Token] -> Maybe (Aexp, [Token])
+parseIntOrParenOrMult tokens =
+    case parseIntOrParenExpr tokens of
+        Just (expr1, (Token TOK_OPERATOR TokenMult _) : restTokens1) ->
+            case parseIntOrParenOrMult restTokens1 of
+                Just (expr2, restTokens2) ->
+                    Just (OpMult expr1 expr2, restTokens2)
+                Nothing -> Nothing
+        result -> result -- can be ’Nothing’ or valid
+
+parseSumOrSubOrProdOrIntOrPar:: [Token] -> Maybe (Aexp, [Token])
+parseSumOrSubOrProdOrIntOrPar tokens =
+    case parseIntOrParenOrMult tokens of
+        Just (expr1,(Token TOK_OPERATOR TokenPlus _) : restTokens1) ->
+            case parseSumOrSubOrProdOrIntOrPar restTokens1 of
+                Just (expr2,restTokens2) ->
+                    Just (OpAdd expr1 expr2,restTokens2)
+                Nothing -> Nothing
+        Just (expr1,(Token TOK_OPERATOR TokenSub _) : restTokens1) ->
+            case parseSumOrSubOrProdOrIntOrPar restTokens1 of
+                Just (expr2,restTokens2) ->
+                    Just (OpSub expr1 expr2,restTokens2)
+                Nothing -> Nothing
+        result -> result
+
+```
+
+- To parse the bolleans operations we implemented a similar algorithm 
+- Firstly we implemented **parseBoolOrParenOrEqualOrLeOrNotOrAndExpr** is responsible to parse the and operation between bolleans but because it the operation between bolleans with least priority in the begining we call **parseBoolOrParenOrEqualOrLeOrNotExpr** wich is responsible for the operation equality between bolleans because there are operations with more priority we called in the beginning **parseNotOrBoolOrParenOrIntcompExpr**
+
+```haskell
+parseBoolOrParenOrEqualOrLeOrNotExpr:: [Token] -> Maybe (Bexp, [Token])
+parseBoolOrParenOrEqualOrLeOrNotExpr tokens = 
+    case parseNotOrBoolOrParenOrIntcompExpr tokens of
+        Just (expr1,(Token TOK_OPERATOR TokenBoolEq _) : restTokens1) ->
+            case parseBoolOrParenOrEqualOrLeOrNotExpr restTokens1 of
+                Just (expr2,restTokens2) ->
+                    Just (Equal expr1 expr2,restTokens2)
+                Nothing -> Nothing
+        result -> result
+
+
+parseBoolOrParenOrEqualOrLeOrNotOrAndExpr:: [Token] -> Maybe (Bexp, [Token])
+-- operations with booleans
+parseBoolOrParenOrEqualOrLeOrNotOrAndExpr tokens = 
+    case parseBoolOrParenOrEqualOrLeOrNotExpr tokens of
+        Just (expr1,(Token TOK_OPERATOR TokenAnd _) : restTokens1) ->
+            case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr restTokens1 of
+                Just (expr2,restTokens2) ->
+                    Just (AndOp expr1 expr2,restTokens2)
+                Nothing -> Nothing
+        result -> result
+
+```
+- **parseNotOrBoolOrParenOrIntcompExpr**
+- this function is responsible for parsing comparations between integers not parentesis and booleans
+- this is the lowest degree of the parse of the booleans because of it in the begining of this function we dont call any function is particular
+- to parse integer comparison we use the parser

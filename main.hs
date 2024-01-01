@@ -153,16 +153,20 @@ loopUntilCloseParentesis tokens=
                 Just(ex2,rest2) ->
                     Just(ex1 ++ ex2 , rest2)
 -- bool expr
+bolleanParentesis :: [Token] -> Maybe (Bexp,[Token])
+bolleanParentesis ((Token TOK_SPECIAL TokenOpenParenthesis p): restTokens1) =
+    case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr restTokens1 of
+        Just (expr, (Token TOK_SPECIAL TokenClosedParenthesis _): restTokens2) ->
+            Just (expr, restTokens2)
+        Just _ -> Nothing -- no closing paren
+bolleanParentesis a = error $ "didn't expect " ++ show (head a)
 
 parseNotOrBoolOrParenOrIntcompExpr :: [Token] -> Maybe (Bexp, [Token])
 parseNotOrBoolOrParenOrIntcompExpr ((Token TOK_BOOL (TokenBool b) _ ) : restTokens) =
     Just (Bo b, restTokens)
 
-parseNotOrBoolOrParenOrIntcompExpr ((Token TOK_SPECIAL TokenOpenParenthesis _): restTokens1) =
-    case parseBoolOrParenOrEqualOrLeOrNotOrAndExpr restTokens1 of
-        Just (expr, (Token TOK_SPECIAL TokenClosedParenthesis _): restTokens2) ->
-            Just (expr, restTokens2)
-        Just _ -> Nothing -- no closing paren
+parseNotOrBoolOrParenOrIntcompExpr ((Token TOK_SPECIAL TokenOpenParenthesis p): restTokens1) =
+    auxForAritemeticBolleanExpr ((Token TOK_SPECIAL TokenOpenParenthesis p): restTokens1)
     
 parseNotOrBoolOrParenOrIntcompExpr ((Token _ TokenNot _): restTokens1) = 
     case parseNotOrBoolOrParenOrIntcompExpr restTokens1 of
@@ -217,8 +221,8 @@ auxForAritemeticBolleanExpr tokens =
                 Just (expr2,restTokens2) ->
                     Just (IntEqual expr1 expr2,restTokens2)
                 Nothing -> Nothing
-        a->
-            error ("tokens :"++show a)
+        a-> bolleanParentesis tokens
+            
 
 -- aritemetic expr
 
@@ -279,6 +283,7 @@ main = do
     print b11
     print b12
     print b13
+    print b14
     where
         b1 = testParser "x := 5; x := x - 1;" == ("","x=4")
         b2 = testParser "x := 0 - 2;" == ("","x=-2")
@@ -293,6 +298,7 @@ main = do
         b11 = testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
         b12 = testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
         b13 = testParser "x := 44; if x <= 43 then x := 1; else ( x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
+        b14 = testParser "if (2+1)*2 == 6 then x := 1; else x := 2;" == ("","x=1")
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
 -- testParser "x := 0 - 2;" == ("","x=-2")
