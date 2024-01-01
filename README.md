@@ -457,3 +457,103 @@ compA (OpMult e1 e2)
 compA (OpSub e1 e2)
     = compA e2 ++ compA e1 ++ [Sub]
 ```
+
+## Intrepeter (Part 1 do projeto)
+
+- we added this struct to better define the data that we added to the stack TT and FF for true and false and then N Integer for the number
+
+```haskell
+data Storeddata= TT | FF | N Integer
+    deriving (Eq, Show)
+-- a configuração da máquina
+-- a pilha é uma lista de valores
+-- o código é uma lista de instruções
+
+type Stored = (String,Storeddata)
+type State = [Stored]
+```
+
+- we defined **findStored** to find in the list the value associated with the right number
+
+```haskell
+findStored:: State->String->Storeddata
+findStored [] s = error ("Value with key " ++ s ++" Not found")
+findStored ((x,stored):l) s
+    | x == s = stored
+    | otherwise = findStored l s
+```
+
+- we  defined **addStored** that it given a State that is the list with the variables saved we search for the variable with the string that we want to add and if we find we change the value if we dont find it we create a new one
+```haskell
+addStored:: State->(String,Storeddata)->State
+addStored [] new = [new]
+addStored ((x,stored):l) (new_s,new_stored)
+    | x == new_s = (new_s,new_stored):l
+    | otherwise = (x,stored):addStored l (new_s,new_stored)
+```
+- we used all of the code of the template for the part 1 of the project our main function in the interperter is **exec**
+```haskell
+exec :: (Code,Stack Storeddata,State) -> ( Code,Stack Storeddata,State)
+```
+- some of the exec for the store , branch , noop , loop equal and sub or equal
+
+```haskell
+exec (Store s:code,stack, stored)= (code,pop stack, addStored stored (s,top stack))
+
+exec (Branch c1 c2:code,stack, stored)
+    | top stack == TT = exec (c1 ++ code,pop stack, stored)
+    | top stack == FF = exec ( c2 ++ code,pop stack,stored)
+    | otherwise = error ("not bollean on Branch " ++ show (top stack))
+
+exec (Noop:code,stack, stored)=
+    exec (code,stack,stored)
+
+exec (Loop c1 c2:code,stack,stored)=
+    let loopcode = c2++[Loop c1 c2] in
+        let code1 = (Branch  loopcode [Noop]):code  in
+            let code2 = c1 ++ code1 in
+                (code2 ,stack, stored)
+
+exec ( Equ:code,stack,stored)=
+    let v1 = top stack in
+        let v2 = top (pop stack ) in
+            if v1 == v2 then ( code,push TT (pop (pop stack)),stored)
+            else (code,push FF (pop (pop stack)),stored)
+
+exec (Sub:code,stack, stored)=
+    let N v1 = top stack in
+        let N v2 = top (pop stack ) in
+            ( code,push (N (v1-v2)) (pop (pop stack)),stored)
+```
+- to handle the state2string we made this functions the **storeddataToString** just copnverts storeddata to string the **stack2Str** transforms the stack to a string the **insert1** is used to insert in a orderway in a list because the state2str wants the variables ordered by the name of the variable **mysort** uses the insert1 with foldr to sort the list by the string **state2Strtmp** parses the data neded by the tests and then we get the **state2Str** the function needed by the tests and required by the template
+
+
+```haskell
+storeddataToString :: Storeddata -> String
+storeddataToString TT = "True"
+storeddataToString FF = "False"
+storeddataToString (N n) = show n
+
+stack2Str :: Stack Storeddata -> String
+stack2Str stack
+    | isEmpty stack = ""
+    | isEmpty (pop stack) = storeddataToString (top stack)
+    | otherwise = storeddataToString (top stack) ++ "," ++ stack2Str (pop stack)
+
+insert1 :: (String, Storeddata) -> [(String, Storeddata)] -> [(String, Storeddata)]
+insert1 c [] = [c]
+insert1 (s1,d1) ((s,d):xs) 
+    | s >= s1 = ((s1,d1):(s,d):xs)  
+    | s < s1 = [(s,d)] ++ (insert1 (s1,d1) xs)
+
+mysort :: State -> State
+mysort l = foldr insert1 [] l
+
+state2Str :: State -> String
+state2Str s = state2Strtmp (mysort s)
+
+state2Strtmp :: State -> String
+state2Strtmp [] = ""
+state2Strtmp [(s,x)] = s ++ "=" ++ storeddataToString x
+state2Strtmp ((s,x):l) = s ++ "=" ++ storeddataToString x ++ "," ++ state2Str l
+```
