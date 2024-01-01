@@ -1,7 +1,5 @@
-
-import Compiler
+module Parser where
 import Lexer
-import Stack
 data Stm =
     IfThenElse Bexp [Stm] [Stm]
     | StmLoop Bexp [Stm]
@@ -23,39 +21,13 @@ data Bexp =
     | Negation Bexp
     deriving (Eq, Show)
 
-compile :: [Stm] -> Code
-compile [] = []
-compile (IfThenElse boleanexp c1 c2:rest)=
-    compB boleanexp ++ [Branch (compile c1) (compile c2)] ++ compile rest
-
-compile (StmLoop boleanexp c:rest)=
-    [Loop (compB boleanexp) (compile c)] ++ compile rest
-
-compile ( NewVar string exp:rest)=
-    compA exp ++ [Store string] ++ compile rest
---compile (lexer "if True Then u := 1 + 1 ;else  u := 2")
-compA :: Aexp -> Code
-compA (Num n) = [Push n]
-compA  (GetVar s) = [Fetch s]
-compA (OpAdd e1 e2)
-    = compA e2 ++ compA e1 ++ [Add]
-compA (OpMult e1 e2)
-    = compA e2 ++ compA e1 ++ [Mult]
-compA (OpSub e1 e2)
-    = compA e2 ++ compA e1 ++ [Sub]
-
-compB :: Bexp -> Code
-compB (Bo False) = [Fals]
-compB (Bo True) = [Tru]
-compB (Negation b) = compB b ++[Neg]
-compB (IntEqual e1 e2)
-    = compA e2 ++ compA e1 ++ [Equ]
-compB (AndOp e1 e2)
-    = compB e2 ++ compB e1 ++ [And]
-compB (Equal e1 e2)
-    = compB e2 ++ compB e1 ++ [Equ]
-compB (LessOrEqual e1 e2)
-    = compA e2 ++ compA e1 ++ [Le]
+findFirst :: (a -> Bool) -> [a] -> ([a],[a])
+findFirst _ [] = ([],[])
+findFirst op (x:xs) 
+    | op x = ([],x:xs)
+    | otherwise = (x:newList,oldlist)
+    where
+        (newList,oldlist) = findFirst op xs
 
 parse :: String -> [Stm]
 parse s = parseTmp $ lexer s
@@ -245,51 +217,3 @@ parseSumOrSubOrProdOrIntOrPar tokens =
                     Just (OpSub expr1 expr2,restTokens2)
                 Nothing -> Nothing
         result -> result
-testParser :: String -> (String, String)
-testParser programCode = (stack2Str stack, state2Str state)
-    where (_,stack,state) = run(compile (parse programCode), createEmptyStack, createEmptyState)
--- tests
-main = do
-    print b1
-    print b2
-    print b3
-    print b4
-    print b5
-    print b6
-    print b7
-    print b8
-    print b9
-    print b10
-    print b11
-    print b12
-    print b13
-    print b14
-    print "end"
-    where
-        b1 = testParser "x := 5; x := x - 1;" == ("","x=4")
-        b2 = testParser "x := 0 - 2;" == ("","x=-2")
-        b3 = testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
-        b4 = testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
-        b5 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
-        b6 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
-        b7 = testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
-        b8 = testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
-        b9 = testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
-        b10 = testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
-        b11 = testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
-        b12 = testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
-        b13 = testParser "x := 44; if x <= 43 then x := 1; else ( x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
-        b14 = testParser "if (2+1)*2 == 6 then x := 1; else x := 2;" == ("","x=1")
--- Examples:
--- testParser "x := 5; x := x - 1;" == ("","x=4")
--- testParser "x := 0 - 2;" == ("","x=-2")
--- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
--- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
--- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
--- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
--- testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
--- testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
--- testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
--- testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
--- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
--- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")

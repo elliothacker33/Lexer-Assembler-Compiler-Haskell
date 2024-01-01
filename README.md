@@ -6,6 +6,8 @@
 
 - [Group](#group-and-contributions)
 
+- [Instructions](#instructions)
+
 - [Lexer](#lexer)
 
 - [Parser](#parser)
@@ -18,6 +20,19 @@
 - Tomás Alexandre Torres Pereira (up202108845@edu.fe.up.pt), contribution -> 
 
 - Tomás Miranda de Figueiredo Sarmento (up202108778@edu.fe.up.pt), contribution -> 
+
+##  Instructions
+1. First download the zip file 
+2. Open  the source folder and on a terminal go to GHCI  v9.0
+3. :load main.hs or :l main.hs
+4.  Just type "main" to run all default tests
+5. For a custom menu that allows the user to run all default tests and new tests, type "custom_main and choose an option from 1 to 3.
+Options:
+	1. Default tests
+	2. Custom parser test
+	3. Exit
+  
+  > **_NOTE:_** For custom assembler tests put another test in test.hs file.
 
 ## Parser
 - this functions calls the lexer to transform the string in tokens and the it calls the 
@@ -182,8 +197,7 @@ instance Show Token where
 
 
 > **_NOTE:_**     The line in position will never change for this assignment.
-```
-```
+
 
 ## parseT
 - the struct used for the parse are for the Stm
