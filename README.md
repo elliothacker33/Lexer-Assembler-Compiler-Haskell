@@ -1,4 +1,4 @@
-#  Turma 5- Wald Meister_5
+#  Turma 5- Lexer-Assembler-Compiler-Haskell
 
   
 
@@ -7,6 +7,8 @@
 - [Group](#group-and-contributions)
 
 - [Lexer](#lexer)
+
+- [Parser](#parser)
 
 
 
@@ -17,7 +19,26 @@
 
 - Tomás Miranda de Figueiredo Sarmento (up202108778@edu.fe.up.pt), contribution -> 
 
-  
+## Parser
+- this functions calls the lexer to transform the string in tokens and the it calls the 
+```haskell
+  parse :: String -> [Stm]
+  parse s = parseTmp $ lexer s
+```
+- parseTmp runs parseT in the tokens until there is none tokens left to parse because there can be a lot of tokens sequencial and the function parseT only parses a statement at a time like a if or a while
+```haskell
+parseTmp :: [Token] -> [Stm]
+parseTmp tokens = 
+    case parseT tokens of
+        Just (statements, []) ->
+            statements
+        Just (statements,s) ->
+            statements ++ parseTmp s
+```
+- parseT
+```haskell
+parseT :: [Token] -> Maybe ([Stm], [Token])
+```
 
 ##  Lexer
 A lexer, or lexical analyzer, is the initial stage in language compilation. This lexer searches for patterns and deconstructs an input string into tokens. These tokens are then utilized for identifiers, operators, special characters, or keywords.
@@ -170,3 +191,8 @@ instance Show Token where
 > **_NOTE:_**     The line in position will never change for this assignment.
 ```
 ```
+
+## parseT
+
+- This function given a list of tokens it parses the first statement it founds like a if , a while or a 'x:=3 ' and returns the rest of the tokens to be parsed further
+### parse aritemetic operations

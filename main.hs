@@ -19,7 +19,6 @@ data Bexp =
     | IntEqual Aexp Aexp
     | Equal Bexp Bexp
     | AndOp Bexp Bexp
-    -- | OrOp Bexp Bexp
     | LessOrEqual Aexp Aexp
     | Negation Bexp
     deriving (Eq, Show)
@@ -68,14 +67,16 @@ compB (Equal e1 e2)
 compB (LessOrEqual e1 e2)
     = compA e2 ++ compA e1 ++ [Le]
 
+parse :: String -> [Stm]
+parse s = parseTmp $ lexer s
 
-parse :: [Token] -> [Stm]
-parse tokens = 
+parseTmp :: [Token] -> [Stm]
+parseTmp tokens = 
     case parseT tokens of
         Just (statements, []) ->
             statements
         Just (statements,s) ->
-            statements ++ parse s
+            statements ++ parseTmp s
 
 
 parseT :: [Token] -> Maybe ([Stm], [Token])
@@ -261,7 +262,7 @@ parseSumOrSubOrProdOrIntOrPar tokens =
 -- parseBoolOrParenOrEqualOrLeOrNotExpr $ lexer "! True"
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
-    where (_,stack,state) = run(compile (parse $ lexer programCode), createEmptyStack, createEmptyState)
+    where (_,stack,state) = run(compile (parse programCode), createEmptyStack, createEmptyState)
 -- parse $ lexer "if ! (x == 3) then x:=x+1;else u:=2;"
 -- tests
 main = do
