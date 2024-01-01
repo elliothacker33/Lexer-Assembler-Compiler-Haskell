@@ -43,3 +43,4 @@ runParserTests = do
     print (testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2"))
     print (testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6"))
     print (testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1"))
+    print (testParser "if ((2+1)*2== 6) then x := 1; else x := 2;" == ("","x=1")) -- extra test
